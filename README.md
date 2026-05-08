@@ -19,6 +19,20 @@ Use `glioma-risk <stage> --help` for stage-specific options.
 
 The default model is the dose/distance baseline. `--model voxel-logistic` trains a voxel-sampled logistic baseline. `--model unet` trains an optional MONAI/PyTorch 3D U-Net checkpoint when the `deep` extra is installed.
 
+## Synthetic Smoke Dataset
+
+Use the synthetic generator for engineering checks when no real DICOM dataset is available:
+
+```sh
+uv run --extra dev python scripts/generate_synthetic_dataset.py --output-root /private/tmp/glioma-smoke --n-patients 2 --shape 12,12,12
+uv run --extra dev python -m glioma_recurrence preprocess --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --prescription-dose-gy 60
+uv run --extra dev python -m glioma_recurrence make-labels --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --assume-baseline-space
+uv run --extra dev python -m glioma_recurrence train --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model dose-distance --output /private/tmp/glioma-smoke/models/dose-distance.json --prescription-dose-gy 60
+uv run --extra dev python -m glioma_recurrence evaluate --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model-path /private/tmp/glioma-smoke/models/dose-distance.json --output /private/tmp/glioma-smoke/reports/eval.json --splits validation --write-predictions
+```
+
+Synthetic data is only for pipeline validation. It is not scientifically meaningful.
+
 ## Manifest Columns
 
 Required:

@@ -10,6 +10,7 @@ Reliability means the pipeline fails before corrupting scientific conclusions.
 - Patient-level split leakage is rejected at manifest load time.
 - Pseudoprogression-window labels are excluded from training unless confirmed.
 - Tests cover RTDOSE scaling, orientation, mask round-trip behavior, split leakage, synthetic overfit, and safety wording.
+- A deterministic synthetic dataset generator supports end-to-end post-ingest smoke tests without patient data.
 
 ## Required Before Real Study Use
 
@@ -17,4 +18,3 @@ Reliability means the pipeline fails before corrupting scientific conclusions.
 - Add visual sign-off workflow for every recurrence-mask mapping.
 - Record software versions, command invocations, and input checksums per run.
 - Add cross-validation orchestration with immutable split manifests.
-
