@@ -1,0 +1,12 @@
+uv reference for LLM agents.
+
+Use uv for local development:
+
+uv run --extra dev pytest
+uv run --extra dev python scripts/validate_knowledge_store.py
+uv run --extra dev python -m glioma_recurrence --help
+
+Deep learning dependencies are optional:
+
+uv sync --extra deep
+

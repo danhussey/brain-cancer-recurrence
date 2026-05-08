@@ -53,4 +53,5 @@ Each case directory stores:
 
 ```sh
 uv run --extra dev pytest
+uv run --extra dev python scripts/validate_knowledge_store.py
 ```

@@ -1,0 +1,9 @@
+Nixpacks reference for LLM agents.
+
+No Nixpacks deployment is configured in V1. If deployment is added later, document:
+- Python version;
+- uv install command;
+- CLI entry points;
+- data-volume boundaries;
+- disabled patient-data uploads by default.
+

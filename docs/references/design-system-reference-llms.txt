@@ -1,0 +1,8 @@
+Design-system reference for LLM agents.
+
+This repository currently has no interactive design system. For static QC reports:
+- show actual imaging artifacts;
+- keep controls and copy compact;
+- preserve research-only framing;
+- avoid decorative visuals that can be mistaken for data.
+
