@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -73,7 +74,7 @@ def recurrence_coverage(labels: np.ndarray, prediction: np.ndarray) -> float:
     return float(np.count_nonzero(labels & prediction) / positives)
 
 
-def calibration_bins(labels: np.ndarray, scores: np.ndarray, *, bins: int = 10) -> list[dict[str, float]]:
+def calibration_bins(labels: np.ndarray, scores: np.ndarray, *, bins: int = 10) -> list[dict[str, float | int | None]]:
     labels = np.asarray(labels, dtype=np.float32)
     scores = np.asarray(scores, dtype=np.float32)
     edges = np.linspace(0.0, 1.0, bins + 1)
@@ -99,8 +100,8 @@ def calibration_bins(labels: np.ndarray, scores: np.ndarray, *, bins: int = 10) 
                     "lower": float(lower),
                     "upper": float(upper),
                     "count": 0,
-                    "mean_predicted": float("nan"),
-                    "observed": float("nan"),
+                    "mean_predicted": None,
+                    "observed": None,
                 }
             )
     return rows
@@ -148,5 +149,16 @@ def summarize_metrics(metrics: Iterable[CaseMetrics]) -> dict[str, object]:
 def write_evaluation_report(summary: dict[str, object], output: str | Path) -> None:
     target = Path(output)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(summary, indent=2, sort_keys=True, allow_nan=True) + "\n")
+    target.write_text(json.dumps(json_safe(summary), indent=2, sort_keys=True, allow_nan=False) + "\n")
 
+
+def json_safe(value):
+    if isinstance(value, dict):
+        return {key: json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [json_safe(item) for item in value]
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value

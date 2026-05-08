@@ -5,7 +5,7 @@ import json
 import numpy as np
 
 from glioma_recurrence.case import CaseData
-from glioma_recurrence.evaluation import average_precision_score, dice, recurrence_coverage
+from glioma_recurrence.evaluation import average_precision_score, calibration_bins, dice, recurrence_coverage
 from glioma_recurrence.geometry import Volume
 from glioma_recurrence.models import DoseDistanceBandModel, VoxelLogisticModel
 
@@ -69,3 +69,12 @@ def test_metrics_cover_auprc_dice_and_top_volume_coverage():
     assert average_precision_score(labels, scores) == 1.0
     assert dice(labels, scores > 0.5) == 1.0
     assert recurrence_coverage(labels, scores > 0.5) == 1.0
+
+
+def test_empty_calibration_bins_are_strict_json_safe():
+    rows = calibration_bins(np.asarray([0, 1]), np.asarray([0.05, 0.95]), bins=4)
+
+    assert rows[1]["count"] == 0
+    assert rows[1]["mean_predicted"] is None
+    assert rows[1]["observed"] is None
+    json.dumps(rows, allow_nan=False)
