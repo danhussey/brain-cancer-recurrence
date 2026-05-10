@@ -11,6 +11,7 @@ Reliability means the pipeline fails before corrupting scientific conclusions.
 - Pseudoprogression-window labels are excluded from training unless confirmed.
 - Tests cover RTDOSE scaling, orientation, mask round-trip behavior, split leakage, synthetic overfit, and safety wording.
 - A deterministic synthetic dataset generator supports end-to-end post-ingest smoke tests without patient data.
+- The CFB-GBM adapter copies pilot files rather than symlinking because preprocessing overwrites derived outputs.
 
 ## Required Before Real Study Use
 

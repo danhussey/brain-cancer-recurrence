@@ -4,6 +4,40 @@ Research pipeline for predicting future glioma recurrence locations from post-op
 
 V1 outputs a calibrated voxelwise recurrence-risk heatmap in the patient baseline planning space. It is not a clinical dose recommendation, treatment-planning system, or medical device.
 
+## Key Terms
+
+- **Glioma / GBM**: A brain tumor type. GBM means glioblastoma, an aggressive glioma.
+- **Patient / case**: One subject in the dataset.
+- **Baseline / t0**: The pre-radiotherapy planning timepoint used as the prediction input.
+- **Follow-up / t1 / t2**: Later imaging timepoints used to determine whether and where recurrence happened.
+- **Planning space**: The coordinate grid used for the baseline treatment-planning images.
+- **Voxel**: A 3D pixel in an MRI, CT, dose map, mask, or risk map.
+- **DICOM**: Common clinical imaging and radiotherapy file format.
+- **NIfTI**: Common research imaging file format, usually `.nii` or `.nii.gz`.
+- **T1c / T1gd**: Contrast-enhanced T1-weighted MRI. This is the main baseline anatomy/tumor channel.
+- **FLAIR**: MRI sequence that highlights edema and abnormal fluid-like tissue signal.
+- **CT**: Computed tomography image, commonly used for radiotherapy planning geometry.
+- **RTDOSE**: Radiotherapy dose map. Values should represent physical dose in Gy.
+- **Gy**: Gray, the physical unit of absorbed radiation dose.
+- **Prescription dose**: The intended treatment dose, used here to normalize the dose channel.
+- **RTSTRUCT**: Radiotherapy structure set containing clinician-drawn contours.
+- **GTV mask**: Gross Tumor Volume mask: the visible tumor/target contour from radiotherapy planning. It is not a future recurrence label.
+- **GTV proxy label**: A GTV mask temporarily used to test pipeline mechanics. Do not use it as recurrence ground truth.
+- **Recurrence mask**: Human-reviewed mask of where tumor recurrence later occurred, mapped back to baseline space.
+- **Brain mask**: Binary mask limiting training/evaluation to brain voxels.
+- **Registration**: Aligning images from different scans or modalities into the same coordinate space.
+- **Resampling**: Regridding one image onto another image's voxel grid after alignment.
+- **Affine**: Matrix that maps voxel indices to real patient/world coordinates.
+- **Risk heatmap**: Voxelwise model output from 0 to 1 estimating recurrence risk.
+- **Calibration**: Whether predicted risks match observed recurrence frequencies.
+- **AUPRC**: Area under the precision-recall curve; useful when recurrence voxels are rare.
+- **Dice**: Spatial overlap score between a predicted region and a label mask.
+- **Brier score**: Mean squared error of predicted probabilities; lower is better.
+- **Split**: Train, validation, or test assignment at the patient level.
+- **Leakage**: Accidental sharing of the same patient across train/validation/test.
+- **Pseudoprogression**: Early post-radiotherapy imaging change that can mimic recurrence.
+- **QC overlay**: Visual report showing anatomy, dose, mask, and prediction for human review.
+
 ## Commands
 
 ```sh
@@ -32,6 +66,16 @@ uv run --extra dev python -m glioma_recurrence evaluate --manifest /private/tmp/
 ```
 
 Synthetic data is only for pipeline validation. It is not scientifically meaningful.
+
+## CFB-GBM External Pilot
+
+When CFB-GBM is stored on an external volume, prepare a small copied pilot workspace on that same volume. Do not symlink source images into `derived/`; `preprocess` writes outputs in place.
+
+```sh
+uv run --extra dev python scripts/prepare_cfb_gbm_dataset.py --source-root /Volumes/0437897195U/CFB-GBM --output-root /Volumes/0437897195U/CFB-GBM-pipeline-pilot --max-cases 2 --allow-gtv-proxy-labels
+```
+
+`--allow-gtv-proxy-labels` uses baseline GTV masks only as smoke-test proxy labels. They are not recurrence labels and must not be used for scientific recurrence modeling.
 
 ## Manifest Columns
 

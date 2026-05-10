@@ -9,6 +9,7 @@
 | Deep learning path | C | Optional MONAI U-Net trainer exists. Needs integration tests with `deep` extra and real patch sampling checks. |
 | Reporting | C | Mandatory static QC panels exist. Needs richer overlays and visual regression checks. |
 | Synthetic smoke harness | B | Deterministic generator and post-ingest pipeline smoke test exist. Needs CI wiring. |
+| CFB-GBM pilot adapter | C | External-volume pilot preparation exists. Labels are GTV proxies only until recurrence masks are curated. |
 | Agent legibility | B | Core doc map exists. Knowledge-store validation added in V2 scaffold pass. |
 
 ## Next Quality Investments
