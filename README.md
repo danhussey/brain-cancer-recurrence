@@ -84,6 +84,10 @@ uv run --extra dev python scripts/prepare_ucsd_ptgbm_dataset.py --source-root /V
 
 The adapter selects subjects with at least two complete MRI+mask timepoints, uses the earliest complete post-treatment timepoint as baseline, and uses the earliest later residual/recurrent tumor timepoint as the recurrence label. It copies baseline T1c, baseline FLAIR, `baseline_tumor_mask.nii.gz`, follow-up T1c label-reference images, and reviewed follow-up tumor masks into the working set.
 
+When UCSD negative-case categories are available, pass `--negative-cases-table`. Add `--include-negative-controls` to retain PsP, radiation-necrosis, and non-specific later timepoints as controls with empty recurrence labels. Do not use their abnormality segmentations as recurrence targets.
+
+By default the adapter writes deterministic patient-level `70/15/15` train/validation/test splits. Adjust with `--train-fraction`, `--validation-fraction`, and `--split-seed`.
+
 If images arrive before the clinical workbook, make a provisional filename-only working set explicitly:
 
 ```sh
@@ -97,6 +101,8 @@ Audit download completeness without writing derivatives:
 ```sh
 uv run --extra dev python scripts/audit_ucsd_ptgbm_dataset.py --source-root /Volumes/External/UCSD-PTGBM --json-output /Volumes/External/UCSD-PTGBM-pipeline/reports/download-audit.json
 ```
+
+Add `--clinical-table`, `--negative-cases-table`, and `--include-negative-controls` to audit the clinically corrected recurrence-positive/control cohort.
 
 Default `make-labels` registration is SimpleITK MRI-to-MRI registration. Use `--registration-mode affine` or `--assume-baseline-space` only when that geometry fallback has been checked.
 

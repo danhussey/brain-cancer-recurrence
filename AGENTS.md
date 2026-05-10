@@ -7,6 +7,7 @@ This repository is optimized for agent-first development. Keep this file short: 
 - Architecture and layering: `ARCHITECTURE.md`
 - Product scope: `docs/product-specs/index.md`
 - Domain design docs: `docs/design-docs/index.md`
+- Research log and durable learnings: `docs/research-log/index.md`
 - Current and historical plans: `docs/PLANS.md`
 - Quality status: `docs/QUALITY_SCORE.md`
 - Reliability posture: `docs/RELIABILITY.md`

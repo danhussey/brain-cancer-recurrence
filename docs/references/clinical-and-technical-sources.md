@@ -12,4 +12,5 @@ These are the source anchors for the V1 research framing. They are links, not re
 ## Dataset Positioning
 
 - UCSD-PTGBM is the primary public dataset path for MRI-only recurrence modeling because it provides longitudinal post-treatment MRI, clinical progression/treatment-change status, and neuroradiologist-approved voxelwise tumor segmentations.
+- TCIA separates UCSD imaging into `Images and Segmentations` (136 subjects / 184 studies) and `BraTS-GLI 2024 Test Data` (42 subjects / 59 studies), while the clinical workbook covers 178 subjects / 243 timepoints.
 - RHUH-GBM remains a smaller candidate for external validation when a clean recurrence-segmentation comparison set is needed.

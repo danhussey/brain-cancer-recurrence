@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import re
 import shutil
@@ -18,6 +19,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
+from typing import Iterable
 from xml.etree import ElementTree
 
 import numpy as np
@@ -27,10 +29,12 @@ from glioma_recurrence.geometry import Volume
 from glioma_recurrence.nifti import read_volume, write_volume
 
 
-SUBJECT_COLUMNS = ("subject_id", "subject", "patient_id", "participant_id", "case_id", "id")
+SUBJECT_COLUMNS = ("subject_id", "subject", "patient_id", "participant_id", "case_id")
 TIMEPOINT_COLUMNS = ("timepoint_id", "timepoint", "study_id", "scan_id", "visit", "session")
+COMBINED_TIMEPOINT_COLUMNS = ("id", "acquisition_id", "scan_timepoint_id", "tcia_id")
 DATE_COLUMNS = ("scan_date", "study_date", "exam_date", "date", "days_from_surgery")
 STATUS_COLUMNS = ("progression_status", "tumor_status", "response_status", "status", "diagnosis", "label")
+NEGATIVE_DX_COLUMNS = ("dx", "diagnosis", "negative_case_category", "category")
 POSITIVE_STATUS_TERMS = ("residual", "recurrent", "recurrence", "progression", "progressive", "tumor")
 EXCLUDED_STATUS_TERMS = (
     "ambiguous",
@@ -47,6 +51,7 @@ EXCLUDED_STATUS_TERMS = (
 )
 CONFIRMED_STATUS_TERMS = ("pathology", "histolog", "clinically confirmed", "confirmed")
 BRATS_TARGET_LABELS = {1, 3, 4}
+CLINICAL_POSITIVE_STATUS = "residual/recurrent tumor"
 IMAGING_ONLY_RECURRENCE_STATUS = "imaging-only follow-up tumor segmentation present"
 IMAGING_ONLY_RECURRENCE_ADJUDICATION = "imaging_followup_segmentation_present"
 
@@ -103,20 +108,26 @@ def prepare_ucsd_dataset(
     overwrite: bool = False,
     dry_run: bool = False,
     allow_imaging_only_labels: bool = False,
+    negative_cases_table: str | Path | None = None,
+    include_negative_controls: bool = False,
+    train_fraction: float = 0.70,
+    validation_fraction: float = 0.15,
+    split_seed: int = 13,
 ) -> PreparedUcsdDataset:
     source = Path(source_root)
     niftis = sorted(find_nifti_files(source))
+    negative_cases = read_negative_case_categories(negative_cases_table) if negative_cases_table is not None else {}
     if clinical_table is None:
         if not allow_imaging_only_labels:
             raise RuntimeError(
                 "UCSD clinical table is required unless --allow-imaging-only-labels is passed. "
                 "The imaging-only mode is provisional and uses later tumor segmentations as labels without "
                 "clinical progression adjudication."
-            )
+        )
         rows = infer_timepoints_from_filenames(niftis)
     else:
-        rows = read_clinical_timepoints(clinical_table)
-    pairs, skipped = select_pairs(rows, niftis, max_subjects=max_subjects)
+        rows = read_clinical_timepoints(clinical_table, negative_cases=negative_cases)
+    pairs, skipped = select_pairs(rows, niftis, max_subjects=max_subjects, include_negative_controls=include_negative_controls)
     if not pairs:
         raise RuntimeError("no UCSD-PTGBM subjects had an eligible baseline and later recurrence label")
 
@@ -128,9 +139,15 @@ def prepare_ucsd_dataset(
         for directory in (derived_root, masks_root, label_refs_root, output / "models", output / "reports"):
             directory.mkdir(parents=True, exist_ok=True)
 
+    split_by_subject = assign_patient_level_splits(
+        pairs,
+        train_fraction=train_fraction,
+        validation_fraction=validation_fraction,
+        seed=split_seed,
+    )
     manifest_rows: list[dict[str, str]] = []
     for index, pair in enumerate(pairs):
-        split = split_for_index(index, len(pairs))
+        split = split_by_subject[pair.subject_id]
         case_dir = derived_root / pair.patient_id
         reviewed_mask_path = masks_root / f"{pair.patient_id}_followup_recurrence_mask.nii.gz"
         label_ref_path = label_refs_root / f"{pair.patient_id}_followup_t1c.nii.gz"
@@ -140,7 +157,10 @@ def prepare_ucsd_dataset(
             copy_file(pair.baseline_files.flair, case_dir / BASELINE_FLAIR, overwrite=overwrite)
             write_mask(pair.baseline_files.mask, case_dir / BASELINE_TUMOR_MASK, overwrite=overwrite)
             copy_file(pair.recurrence_files.t1c, label_ref_path, overwrite=overwrite)
-            write_mask(pair.recurrence_files.mask, reviewed_mask_path, overwrite=overwrite)
+            if is_negative_control_adjudication(pair.recurrence_adjudication):
+                write_empty_mask_like(pair.recurrence_files.t1c, reviewed_mask_path, overwrite=overwrite)
+            else:
+                write_mask(pair.recurrence_files.mask, reviewed_mask_path, overwrite=overwrite)
 
         manifest_rows.append(
             {
@@ -169,11 +189,27 @@ def prepare_ucsd_dataset(
         summary = {
             "source_root": str(source),
             "clinical_table": str(clinical_table) if clinical_table is not None else "",
+            "negative_cases_table": str(negative_cases_table) if negative_cases_table is not None else "",
+            "negative_case_count": len(negative_cases),
+            "include_negative_controls": include_negative_controls,
+            "selected_positive_subjects": [
+                pair.subject_id for pair in pairs if not is_negative_control_adjudication(pair.recurrence_adjudication)
+            ],
+            "selected_negative_control_subjects": [
+                pair.subject_id for pair in pairs if is_negative_control_adjudication(pair.recurrence_adjudication)
+            ],
             "allow_imaging_only_labels": allow_imaging_only_labels,
             "manifest": str(manifest),
             "derived_root": str(derived_root),
             "selected_subjects": [pair.subject_id for pair in pairs],
             "skipped_subjects": skipped,
+            "split_counts": split_counts(split_by_subject.values()),
+            "split_strategy": {
+                "train_fraction": train_fraction,
+                "validation_fraction": validation_fraction,
+                "test_fraction": test_fraction(train_fraction, validation_fraction),
+                "split_seed": split_seed,
+            },
             "label_policy": (
                 "Prefer total cellular tumor masks; otherwise combine enhancing and non-enhancing/core masks. "
                 "FLAIR-only edema and resection cavity masks are excluded."
@@ -228,30 +264,87 @@ def infer_subject_timepoint(path: Path) -> tuple[str, str] | None:
     return parts[-3], parts[-2]
 
 
-def read_clinical_timepoints(path: str | Path) -> list[ClinicalTimepoint]:
+def infer_subject_timepoint_from_identifier(identifier: str) -> tuple[str, str] | None:
+    value = identifier.strip()
+    real_match = re.fullmatch(r"(UCSD-PTGBM-\d{4})_(\d+)", value)
+    if real_match:
+        return real_match.group(1), real_match.group(2)
+    if "_" not in value:
+        return None
+    subject_id, timepoint_id = value.rsplit("_", 1)
+    if not subject_id or not timepoint_id:
+        return None
+    return subject_id, timepoint_id
+
+
+def read_clinical_timepoints(
+    path: str | Path,
+    *,
+    negative_cases: dict[str, str] | None = None,
+) -> list[ClinicalTimepoint]:
     rows = read_table(path)
     if not rows:
         raise RuntimeError(f"{path} did not contain any clinical rows")
-    subject_column = choose_column(rows[0], SUBJECT_COLUMNS, "subject")
-    timepoint_column = choose_column(rows[0], TIMEPOINT_COLUMNS, "timepoint")
-    status_column = choose_column(rows[0], STATUS_COLUMNS, "progression/status")
+    negative_cases = negative_cases or {}
+    subject_column = choose_optional_column(rows[0], SUBJECT_COLUMNS)
+    timepoint_column = choose_optional_column(rows[0], TIMEPOINT_COLUMNS)
+    combined_column = choose_optional_column(rows[0], COMBINED_TIMEPOINT_COLUMNS)
+    if subject_column is None or timepoint_column is None:
+        if combined_column is None:
+            raise RuntimeError(
+                "clinical table is missing subject/timepoint columns; tried "
+                f"subject columns {', '.join(SUBJECT_COLUMNS)}, timepoint columns {', '.join(TIMEPOINT_COLUMNS)}, "
+                f"or combined columns {', '.join(COMBINED_TIMEPOINT_COLUMNS)}"
+            )
+    status_column = choose_optional_column(rows[0], STATUS_COLUMNS)
+    if status_column is None and combined_column is None:
+        raise RuntimeError(
+            f"clinical table is missing a progression/status column; tried {', '.join(STATUS_COLUMNS)}"
+        )
     date_column = choose_optional_column(rows[0], DATE_COLUMNS)
     timepoints: list[ClinicalTimepoint] = []
     for row_index, row in enumerate(rows, start=2):
-        subject_id = row.get(subject_column, "").strip()
-        timepoint_id = row.get(timepoint_column, "").strip()
+        acquisition_id = row.get(combined_column, "").strip() if combined_column else ""
+        if subject_column is not None and timepoint_column is not None:
+            subject_id = row.get(subject_column, "").strip()
+            timepoint_id = row.get(timepoint_column, "").strip()
+        else:
+            parsed = infer_subject_timepoint_from_identifier(acquisition_id)
+            if parsed is None:
+                continue
+            subject_id, timepoint_id = parsed
         if not subject_id or not timepoint_id:
             continue
+        status = row.get(status_column, "").strip() if status_column else ""
+        if not status and acquisition_id:
+            status = negative_cases.get(acquisition_id, CLINICAL_POSITIVE_STATUS)
         timepoints.append(
             ClinicalTimepoint(
                 subject_id=subject_id,
                 timepoint_id=timepoint_id,
                 scan_date=parse_scan_date(row.get(date_column, "")) if date_column else None,
-                status=row.get(status_column, "").strip(),
+                status=status,
                 row_index=row_index,
             )
         )
     return timepoints
+
+
+def read_negative_case_categories(path: str | Path | None) -> dict[str, str]:
+    if path is None:
+        return {}
+    rows = read_table(path)
+    if not rows:
+        return {}
+    id_column = choose_column(rows[0], COMBINED_TIMEPOINT_COLUMNS, "negative case ID")
+    dx_column = choose_optional_column(rows[0], NEGATIVE_DX_COLUMNS)
+    categories: dict[str, str] = {}
+    for row in rows:
+        acquisition_id = row.get(id_column, "").strip()
+        if not acquisition_id:
+            continue
+        categories[acquisition_id] = row.get(dx_column, "").strip() if dx_column else "negative_case"
+    return categories
 
 
 def read_table(path: str | Path) -> list[dict[str, str]]:
@@ -268,10 +361,29 @@ def read_table(path: str | Path) -> list[dict[str, str]]:
 
 
 def read_xlsx_table(path: Path) -> list[dict[str, str]]:
+    tables = read_xlsx_tables(path)
+    if not tables:
+        return []
+    for rows in tables:
+        if rows and choose_optional_column(rows[0], COMBINED_TIMEPOINT_COLUMNS) is not None:
+            return rows
+    return tables[0]
+
+
+def read_xlsx_tables(path: Path) -> list[list[dict[str, str]]]:
     with zipfile.ZipFile(path) as workbook:
         shared_strings = read_shared_strings(workbook)
-        sheet_name = first_sheet_name(workbook)
-        sheet = ElementTree.fromstring(workbook.read(sheet_name))
+        sheet_names = sheet_xml_names(workbook)
+        tables = [read_xlsx_sheet(workbook, sheet_name, shared_strings) for sheet_name in sheet_names]
+    return [table for table in tables if table]
+
+
+def read_xlsx_sheet(
+    workbook: zipfile.ZipFile,
+    sheet_name: str,
+    shared_strings: list[str],
+) -> list[dict[str, str]]:
+    sheet = ElementTree.fromstring(workbook.read(sheet_name))
     rows: list[list[str]] = []
     for row in sheet.findall(".//{*}sheetData/{*}row"):
         cells: dict[int, str] = {}
@@ -302,13 +414,22 @@ def read_shared_strings(workbook: zipfile.ZipFile) -> list[str]:
     return values
 
 
-def first_sheet_name(workbook: zipfile.ZipFile) -> str:
+def sheet_xml_names(workbook: zipfile.ZipFile) -> list[str]:
     if "xl/worksheets/sheet1.xml" in workbook.namelist():
-        return "xl/worksheets/sheet1.xml"
-    for name in workbook.namelist():
-        if name.startswith("xl/worksheets/") and name.endswith(".xml"):
-            return name
-    raise RuntimeError("xlsx workbook did not contain a worksheet")
+        names = [
+            name
+            for name in workbook.namelist()
+            if name.startswith("xl/worksheets/") and name.endswith(".xml")
+        ]
+        return sorted(names, key=natural_key)
+    names = [
+        name
+        for name in workbook.namelist()
+        if name.startswith("xl/worksheets/") and name.endswith(".xml")
+    ]
+    if not names:
+        raise RuntimeError("xlsx workbook did not contain a worksheet")
+    return sorted(names, key=natural_key)
 
 
 def xlsx_cell_text(cell: ElementTree.Element, shared_strings: list[str]) -> str:
@@ -381,6 +502,7 @@ def select_pairs(
     niftis: list[Path],
     *,
     max_subjects: int | None,
+    include_negative_controls: bool = False,
 ) -> tuple[list[UcsdPair], dict[str, str]]:
     by_subject: dict[str, list[ClinicalTimepoint]] = {}
     for row in rows:
@@ -398,7 +520,12 @@ def select_pairs(
         if len(usable) < 2:
             skipped[subject_id] = "fewer than two complete MRI+mask timepoints"
             continue
-        selected_pair = choose_pair(subject_id, usable, len(pairs))
+        selected_pair = choose_pair(
+            subject_id,
+            usable,
+            len(pairs),
+            include_negative_controls=include_negative_controls,
+        )
         if selected_pair is None:
             skipped[subject_id] = "no later residual/recurrent tumor timepoint"
             continue
@@ -412,11 +539,28 @@ def choose_pair(
     subject_id: str,
     usable: list[tuple[ClinicalTimepoint, UcsdTimepointFiles]],
     pair_index: int,
+    *,
+    include_negative_controls: bool = False,
 ) -> UcsdPair | None:
+    first_negative_control: UcsdPair | None = None
     for baseline_index, (baseline, baseline_files) in enumerate(usable[:-1]):
         for recurrence, recurrence_files in usable[baseline_index + 1 :]:
             adjudication = recurrence_adjudication(recurrence.status)
             if adjudication is None:
+                negative_adjudication = (
+                    negative_control_adjudication(recurrence.status) if include_negative_controls else None
+                )
+                if negative_adjudication is not None and first_negative_control is None:
+                    patient_id = f"UCSD{pair_index + 1:04d}_{safe_id(subject_id)}"
+                    first_negative_control = UcsdPair(
+                        subject_id=subject_id,
+                        patient_id=patient_id,
+                        baseline=baseline,
+                        recurrence=recurrence,
+                        baseline_files=baseline_files,
+                        recurrence_files=recurrence_files,
+                        recurrence_adjudication=negative_adjudication,
+                    )
                 continue
             patient_id = f"UCSD{pair_index + 1:04d}_{safe_id(subject_id)}"
             return UcsdPair(
@@ -428,7 +572,7 @@ def choose_pair(
                 recurrence_files=recurrence_files,
                 recurrence_adjudication=adjudication,
             )
-    return None
+    return first_negative_control
 
 
 def timepoint_sort_key(timepoint: ClinicalTimepoint) -> tuple[int, object]:
@@ -453,6 +597,21 @@ def recurrence_adjudication(status: str) -> str | None:
     if any(term in normalized for term in CONFIRMED_STATUS_TERMS):
         return "clinically_confirmed"
     return "confirmed"
+
+
+def negative_control_adjudication(status: str) -> str | None:
+    normalized = normalize_identifier(status)
+    if normalized in {"ns", "non_specific", "nonspecific"}:
+        return "clinical_negative_non_specific"
+    if "pseudoprogression" in normalized or normalized.startswith("psp") or "_psp_" in f"_{normalized}_":
+        return "clinical_negative_pseudoprogression"
+    if "radiation_necrosis" in normalized:
+        return "clinical_negative_radiation_necrosis"
+    return None
+
+
+def is_negative_control_adjudication(value: str) -> bool:
+    return normalize_identifier(value).startswith("clinical_negative_")
 
 
 def match_timepoint_files(niftis: list[Path], timepoint: ClinicalTimepoint) -> UcsdTimepointFiles | None:
@@ -572,17 +731,78 @@ def safe_id(value: str) -> str:
 def date_for_manifest(timepoint: ClinicalTimepoint) -> str:
     if timepoint.scan_date is not None:
         return timepoint.scan_date.isoformat()
-    return "1900-01-01"
+    numbers = [part for part in re.split(r"(\d+)", timepoint.timepoint_id) if part.isdigit()]
+    day = min(max(int(numbers[-1]) if numbers else 1, 1), 28)
+    return date(1900, 1, day).isoformat()
 
 
-def split_for_index(index: int, total: int) -> str:
-    if index == 0:
-        return "train"
-    if index == 1:
-        return "validation"
-    if total == 3 or index == total - 1:
-        return "test"
-    return "train"
+def assign_patient_level_splits(
+    pairs: list[UcsdPair],
+    *,
+    train_fraction: float,
+    validation_fraction: float,
+    seed: int,
+) -> dict[str, str]:
+    test = test_fraction(train_fraction, validation_fraction)
+    if train_fraction <= 0 or validation_fraction < 0 or test < 0:
+        raise ValueError("split fractions must be non-negative and train_fraction must be positive")
+    if not pairs:
+        return {}
+
+    counts = patient_level_split_counts(len(pairs), train_fraction=train_fraction, validation_fraction=validation_fraction)
+    ordered = sorted(
+        pairs,
+        key=lambda pair: (stable_split_key(pair.subject_id, seed), natural_key(pair.subject_id)),
+    )
+    split_by_subject: dict[str, str] = {}
+    train_end = counts["train"]
+    validation_end = train_end + counts["validation"]
+    for index, pair in enumerate(ordered):
+        if index < train_end:
+            split = "train"
+        elif index < validation_end:
+            split = "validation"
+        else:
+            split = "test"
+        split_by_subject[pair.subject_id] = split
+    return split_by_subject
+
+
+def patient_level_split_counts(total: int, *, train_fraction: float, validation_fraction: float) -> dict[str, int]:
+    if total < 1:
+        return {"train": 0, "validation": 0, "test": 0}
+    if total == 1:
+        return {"train": 1, "validation": 0, "test": 0}
+    if total == 2:
+        return {"train": 1, "validation": 1, "test": 0}
+
+    test = test_fraction(train_fraction, validation_fraction)
+    validation_count = max(1, int(round(total * validation_fraction)))
+    test_count = max(1, int(round(total * test)))
+    while validation_count + test_count > total - 1:
+        if validation_count >= test_count and validation_count > 1:
+            validation_count -= 1
+        elif test_count > 1:
+            test_count -= 1
+        else:
+            break
+    train_count = total - validation_count - test_count
+    return {"train": train_count, "validation": validation_count, "test": test_count}
+
+
+def test_fraction(train_fraction: float, validation_fraction: float) -> float:
+    return 1.0 - train_fraction - validation_fraction
+
+
+def stable_split_key(subject_id: str, seed: int) -> str:
+    return hashlib.sha256(f"{seed}:{subject_id}".encode("utf-8")).hexdigest()
+
+
+def split_counts(splits: Iterable[str]) -> dict[str, int]:
+    counts = {"train": 0, "validation": 0, "test": 0}
+    for split in splits:
+        counts[split] = counts.get(split, 0) + 1
+    return counts
 
 
 def copy_file(source: Path, target: Path, *, overwrite: bool) -> None:
@@ -613,12 +833,28 @@ def write_mask(source: MaskSource, target: Path, *, overwrite: bool) -> None:
     write_volume(Volume(combined.astype(np.uint8), affine), target, dtype=np.uint8)
 
 
+def write_empty_mask_like(reference: Path, target: Path, *, overwrite: bool) -> None:
+    if target.exists() and not overwrite:
+        raise FileExistsError(f"{target} already exists; pass --overwrite to replace it")
+    volume = read_volume(reference)
+    write_volume(Volume(np.zeros(volume.shape, dtype=np.uint8), volume.affine), target, dtype=np.uint8)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", required=True, help="Extracted UCSD-PTGBM NIfTI root")
     parser.add_argument("--clinical-table", default=None, help="UCSD clinical CSV/TSV/XLSX table")
+    parser.add_argument("--negative-cases-table", default=None, help="Optional UCSD negative-case category table")
+    parser.add_argument(
+        "--include-negative-controls",
+        action="store_true",
+        help="Include subjects whose later clinical categories are PsP, radiation necrosis, or non-specific as empty-label controls.",
+    )
     parser.add_argument("--output-root", required=True, help="External workspace for copied derivatives")
     parser.add_argument("--max-subjects", type=int, default=None)
+    parser.add_argument("--train-fraction", type=float, default=0.70)
+    parser.add_argument("--validation-fraction", type=float, default=0.15)
+    parser.add_argument("--split-seed", type=int, default=13)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
@@ -642,6 +878,11 @@ def main(argv: list[str] | None = None) -> int:
         overwrite=args.overwrite,
         dry_run=args.dry_run,
         allow_imaging_only_labels=args.allow_imaging_only_labels,
+        negative_cases_table=args.negative_cases_table,
+        include_negative_controls=args.include_negative_controls,
+        train_fraction=args.train_fraction,
+        validation_fraction=args.validation_fraction,
+        split_seed=args.split_seed,
     )
     print(f"selected_subjects={','.join(prepared.selected_subjects)}")
     print(f"manifest={prepared.manifest}")

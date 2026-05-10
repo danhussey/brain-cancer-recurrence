@@ -9,3 +9,5 @@ Track known debt as small, agent-actionable items.
 | TD-003 | Reports | Add overlay opacity controls and visual regression checks for QC HTML. | Open |
 | TD-004 | Deep learning | Add `deep` extra integration smoke test behind an optional marker. | Open |
 | TD-005 | External validation | Add RHUH-GBM adapter or documented external-validation workflow. | Open |
+| TD-006 | UCSD clinical metadata | Locate and ingest UCSD clinical table so filename-inferred labels can be replaced with adjudicated recurrence labels. | Done |
+| TD-007 | Evaluation | Add repeated split or cross-validation runner; one deterministic split is not enough for scientific claims. | Open |

@@ -22,16 +22,33 @@ def load_prepare_module() -> ModuleType:
     return module
 
 
-def audit_ucsd_dataset(source_root: str | Path, clinical_table: str | Path | None = None) -> dict[str, object]:
+def audit_ucsd_dataset(
+    source_root: str | Path,
+    clinical_table: str | Path | None = None,
+    negative_cases_table: str | Path | None = None,
+    include_negative_controls: bool = False,
+) -> dict[str, object]:
     prepare = load_prepare_module()
     source = Path(source_root)
     niftis = sorted(prepare.find_nifti_files(source))
+    negative_cases = (
+        prepare.read_negative_case_categories(negative_cases_table) if negative_cases_table is not None else {}
+    )
     rows = (
-        prepare.read_clinical_timepoints(clinical_table)
+        prepare.read_clinical_timepoints(clinical_table, negative_cases=negative_cases)
         if clinical_table is not None
         else prepare.infer_timepoints_from_filenames(niftis)
     )
-    pairs, skipped = prepare.select_pairs(rows, niftis, max_subjects=None)
+    positive_pairs, positive_skipped = prepare.select_pairs(rows, niftis, max_subjects=None)
+    pairs, skipped = prepare.select_pairs(
+        rows,
+        niftis,
+        max_subjects=None,
+        include_negative_controls=include_negative_controls,
+    )
+    negative_control_pairs = [
+        pair for pair in pairs if prepare.is_negative_control_adjudication(pair.recurrence_adjudication)
+    ]
     complete_timepoints = [
         row for row in rows if prepare.match_timepoint_files(niftis, row) is not None
     ]
@@ -42,7 +59,10 @@ def audit_ucsd_dataset(source_root: str | Path, clinical_table: str | Path | Non
     return {
         "source_root": str(source),
         "clinical_table": str(clinical_table) if clinical_table is not None else "",
+        "negative_cases_table": str(negative_cases_table) if negative_cases_table is not None else "",
+        "negative_case_count": len(negative_cases),
         "pairing_mode": "clinical-table" if clinical_table is not None else "filename-inferred",
+        "include_negative_controls": include_negative_controls,
         "nifti_files": len(niftis),
         "partial_files": count_files(source, "*.partial"),
         "aspera_checkpoint_files": count_files(source, "*.aspera-ckpt"),
@@ -51,8 +71,11 @@ def audit_ucsd_dataset(source_root: str | Path, clinical_table: str | Path | Non
         "complete_mri_mask_timepoints": len(complete_timepoints),
         "subjects_with_2plus_complete_timepoints": sum(count >= 2 for count in complete_by_subject.values()),
         "eligible_pairs": len(pairs),
+        "positive_pairs": len(positive_pairs),
+        "negative_control_pairs": len(negative_control_pairs),
         "eligible_subjects": [pair.subject_id for pair in pairs],
         "skipped_subjects": skipped,
+        "positive_only_skipped_subjects": positive_skipped,
         "modality_counts": {
             "t1c": sum(1 for path in niftis if prepare.is_t1c_file(path)),
             "flair": sum(1 for path in niftis if prepare.is_flair_file(path)),
@@ -73,7 +96,10 @@ def print_human(summary: dict[str, object]) -> None:
     for key in (
         "source_root",
         "clinical_table",
+        "negative_cases_table",
+        "negative_case_count",
         "pairing_mode",
+        "include_negative_controls",
         "nifti_files",
         "partial_files",
         "aspera_checkpoint_files",
@@ -82,6 +108,8 @@ def print_human(summary: dict[str, object]) -> None:
         "complete_mri_mask_timepoints",
         "subjects_with_2plus_complete_timepoints",
         "eligible_pairs",
+        "positive_pairs",
+        "negative_control_pairs",
     ):
         print(f"{key}={summary[key]}")
     modality_counts = summary["modality_counts"]
@@ -98,13 +126,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", required=True, help="Extracted UCSD-PTGBM NIfTI root")
     parser.add_argument("--clinical-table", default=None, help="Optional UCSD clinical CSV/TSV/XLSX table")
+    parser.add_argument("--negative-cases-table", default=None, help="Optional UCSD negative-case category table")
+    parser.add_argument("--include-negative-controls", action="store_true")
     parser.add_argument("--json-output", default=None, help="Optional path for strict JSON audit output")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    summary = audit_ucsd_dataset(args.source_root, args.clinical_table)
+    summary = audit_ucsd_dataset(
+        args.source_root,
+        args.clinical_table,
+        args.negative_cases_table,
+        args.include_negative_controls,
+    )
     print_human(summary)
     if args.json_output:
         output = Path(args.json_output)
