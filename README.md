@@ -92,6 +92,12 @@ uv run --extra dev python scripts/prepare_ucsd_ptgbm_dataset.py --source-root /V
 
 This mode is useful for pipeline bring-up only. It pairs the earliest complete image timepoint with the earliest later complete tumor segmentation and marks labels as `imaging_followup_segmentation_present`, without clinical progression adjudication.
 
+Audit download completeness without writing derivatives:
+
+```sh
+uv run --extra dev python scripts/audit_ucsd_ptgbm_dataset.py --source-root /Volumes/External/UCSD-PTGBM --json-output /Volumes/External/UCSD-PTGBM-pipeline/reports/download-audit.json
+```
+
 Default `make-labels` registration is SimpleITK MRI-to-MRI registration. Use `--registration-mode affine` or `--assume-baseline-space` only when that geometry fallback has been checked.
 
 ## Manifest Columns

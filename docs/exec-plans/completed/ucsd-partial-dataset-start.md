@@ -15,6 +15,7 @@ Enable safe pipeline bring-up while UCSD-PTGBM images are still downloading and 
 - [x] Add explicit `--allow-imaging-only-labels` mode to the UCSD adapter.
 - [x] Keep imaging-only labels visibly provisional with `imaging_followup_segmentation_present`.
 - [x] Document the provisional workflow in `README.md`.
+- [x] Add a read-only UCSD audit command for download completeness checks.
 - [x] Build an external derived working set from the partial download.
 - [x] Run minimal preprocess / label / train / evaluate smoke commands on the derived working set.
 
@@ -24,6 +25,7 @@ Enable safe pipeline bring-up while UCSD-PTGBM images are still downloading and 
 - Filename-only pairing is opt-in because it lacks clinical progression adjudication.
 - No source dataset files are copied into the repo; derived working data remains on external storage.
 - The starter run used `--assume-baseline-space` only after all prepared baseline/follow-up images and masks had matching shape and affine.
+- `scripts/audit_ucsd_ptgbm_dataset.py` is read-only and can be rerun while the download is still active.
 
 ## Starter Run
 

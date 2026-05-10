@@ -26,6 +26,17 @@ def load_ucsd_adapter():
     return module
 
 
+def load_ucsd_audit():
+    script_path = Path.cwd() / "scripts/audit_ucsd_ptgbm_dataset.py"
+    spec = importlib.util.spec_from_file_location("audit_ucsd_ptgbm_dataset", script_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def write_fake_ucsd_timepoint(root: Path, subject: str, timepoint: str, *, mask_name: str = "TCT_mask") -> None:
     directory = root / subject / timepoint
     directory.mkdir(parents=True)
@@ -139,3 +150,26 @@ def test_prepare_ucsd_dataset_infers_provisional_pairs_from_filenames(tmp_path: 
     assert rows[0]["baseline_timepoint_id"] == "T0"
     assert rows[0]["recurrence_timepoint_id"] == "T1"
     assert (output / "ucsd_prepare_summary.json").exists()
+
+
+def test_audit_ucsd_dataset_reports_download_and_pairing_counts(tmp_path: Path):
+    audit = load_ucsd_audit()
+    source = tmp_path / "UCSD-PTGBM"
+    write_fake_ucsd_timepoint(source, "S1", "T0")
+    write_fake_ucsd_timepoint(source, "S1", "T1")
+    write_fake_ucsd_timepoint(source, "S2", "T0")
+    partial = source / "S3" / "T0" / "S3_T0_flair.nii.gz.partial"
+    partial.parent.mkdir(parents=True)
+    partial.write_text("partial")
+
+    summary = audit.audit_ucsd_dataset(source)
+
+    assert summary["pairing_mode"] == "filename-inferred"
+    assert summary["partial_files"] == 1
+    assert summary["subjects_seen"] == 2
+    assert summary["complete_mri_mask_timepoints"] == 3
+    assert summary["subjects_with_2plus_complete_timepoints"] == 1
+    assert summary["eligible_pairs"] == 1
+    assert summary["eligible_subjects"] == ["S1"]
+    assert summary["modality_counts"]["t1c"] == 3
+    assert summary["modality_counts"]["flair"] == 3
