@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "glioma-recurrence-risk"
 version = "0.1.0"
-description = "Research pipeline for voxelwise glioma recurrence-risk prediction from pre-RT MRI and RTDOSE."
+description = "Research pipeline for voxelwise glioma recurrence-risk prediction from post-treatment MRI."
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 license = { text = "MIT" }
@@ -14,7 +14,6 @@ dependencies = [
   "numpy>=1.26",
   "scipy>=1.11",
   "nibabel>=5.2",
-  "pydicom>=2.4",
   "scikit-learn>=1.4",
   "matplotlib>=3.8",
 ]
@@ -37,4 +36,3 @@ packages = ["src/glioma_recurrence"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-

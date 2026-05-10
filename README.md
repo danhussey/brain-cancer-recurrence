@@ -1,31 +1,23 @@
 # Glioma Recurrence Risk Pipeline
 
-Research pipeline for predicting future glioma recurrence locations from post-operative pre-radiotherapy MRI plus radiotherapy dose maps.
+Research pipeline for predicting future glioma recurrence locations from post-operative MRI. UCSD-PTGBM is the primary public-data workflow.
 
-V1 outputs a calibrated voxelwise recurrence-risk heatmap in the patient baseline planning space. It is not a clinical dose recommendation, treatment-planning system, or medical device.
+V1 outputs a calibrated voxelwise recurrence-risk heatmap in the patient baseline space. It is not a clinical dose recommendation, treatment-planning system, or medical device.
 
 ## Key Terms
 
 - **Glioma / GBM**: A brain tumor type. GBM means glioblastoma, an aggressive glioma.
 - **Patient / case**: One subject in the dataset.
-- **Baseline / t0**: The pre-radiotherapy planning timepoint used as the prediction input.
+- **Baseline / t0**: The earlier post-treatment MRI timepoint used as prediction input.
 - **Follow-up / t1 / t2**: Later imaging timepoints used to determine whether and where recurrence happened.
-- **Planning space**: The coordinate grid used for the baseline treatment-planning images.
-- **Voxel**: A 3D pixel in an MRI, CT, dose map, mask, or risk map.
-- **DICOM**: Common clinical imaging and radiotherapy file format.
+- **Voxel**: A 3D pixel in an MRI, mask, or risk map.
 - **NIfTI**: Common research imaging file format, usually `.nii` or `.nii.gz`.
-- **T1c / T1gd**: Contrast-enhanced T1-weighted MRI. This is the main baseline anatomy/tumor channel.
+- **T1c / T1gd**: Contrast-enhanced T1-weighted MRI. This is the main anatomy/tumor channel.
 - **FLAIR**: MRI sequence that highlights edema and abnormal fluid-like tissue signal.
-- **CT**: Computed tomography image, commonly used for radiotherapy planning geometry.
-- **RTDOSE**: Radiotherapy dose map. Values should represent physical dose in Gy.
-- **Gy**: Gray, the physical unit of absorbed radiation dose.
-- **Prescription dose**: The intended treatment dose, used here to normalize the dose channel.
-- **RTSTRUCT**: Radiotherapy structure set containing clinician-drawn contours.
-- **GTV mask**: Gross Tumor Volume mask: the visible tumor/target contour from radiotherapy planning. It is not a future recurrence label.
-- **GTV proxy label**: A GTV mask temporarily used to test pipeline mechanics. Do not use it as recurrence ground truth.
+- **Baseline tumor mask**: Tumor segmentation at the baseline timepoint. This is a prediction-time location feature.
 - **Recurrence mask**: Human-reviewed mask of where tumor recurrence later occurred, mapped back to baseline space.
 - **Brain mask**: Binary mask limiting training/evaluation to brain voxels.
-- **Registration**: Aligning images from different scans or modalities into the same coordinate space.
+- **Registration**: Aligning images from different scans into the same coordinate space.
 - **Resampling**: Regridding one image onto another image's voxel grid after alignment.
 - **Affine**: Matrix that maps voxel indices to real patient/world coordinates.
 - **Risk heatmap**: Voxelwise model output from 0 to 1 estimating recurrence risk.
@@ -36,46 +28,63 @@ V1 outputs a calibrated voxelwise recurrence-risk heatmap in the patient baselin
 - **Split**: Train, validation, or test assignment at the patient level.
 - **Leakage**: Accidental sharing of the same patient across train/validation/test.
 - **Pseudoprogression**: Early post-radiotherapy imaging change that can mimic recurrence.
-- **QC overlay**: Visual report showing anatomy, dose, mask, and prediction for human review.
+- **QC overlay**: Visual report showing anatomy, masks, and prediction for human review.
 
 ## Commands
 
 ```sh
-glioma-risk ingest --manifest patients.csv --dicom-root dicom --derived-root derived
-glioma-risk preprocess --manifest patients.csv --derived-root derived --prescription-dose-gy 60
+glioma-risk preprocess --manifest patients.csv --derived-root derived
 glioma-risk make-labels --manifest patients.csv --derived-root derived
-glioma-risk train --manifest patients.csv --derived-root derived --model dose-distance --output models/dose-distance.json
-glioma-risk evaluate --manifest patients.csv --derived-root derived --model-path models/dose-distance.json --output reports/eval.json
-glioma-risk predict --case-dir derived/P001 --model-path models/dose-distance.json --output-dir derived/P001
+glioma-risk train --manifest patients.csv --derived-root derived --model tumor-distance --output models/tumor-distance.json
+glioma-risk train --manifest patients.csv --derived-root derived --model voxel-logistic-mri --output models/voxel-logistic-mri.json
+glioma-risk evaluate --manifest patients.csv --derived-root derived --model-path models/voxel-logistic-mri.json --output reports/eval.json
+glioma-risk predict --case-dir derived/P001 --model-path models/voxel-logistic-mri.json --output-dir derived/P001
 ```
 
 Use `glioma-risk <stage> --help` for stage-specific options.
 
-The default model is the dose/distance baseline. `--model voxel-logistic` trains a voxel-sampled logistic baseline. `--model unet` trains an optional MONAI/PyTorch 3D U-Net checkpoint when the `deep` extra is installed.
+The default model is `tumor-distance`, the required simple baseline. `--model voxel-logistic-mri` trains the first learned MRI-only baseline. `--model unet` trains an optional MONAI/PyTorch 3D U-Net checkpoint when the `deep` extra is installed.
+
+## Observability
+
+Every CLI stage writes structured run artifacts by default:
+
+- `events.jsonl`: timestamped stage, case, metric, and artifact events.
+- `summary.json`: final status, duration, case status, event counts, command args, and output artifacts.
+
+For manifest stages, artifacts default to `<derived-root>/../observability/<run-id>/`. For `predict`, they default beside the output directory. Override or disable this per command:
+
+```sh
+glioma-risk train --manifest patients.csv --derived-root derived --output models/tumor-distance.json --observability-root runs
+glioma-risk evaluate --manifest patients.csv --derived-root derived --model-path models/voxel-logistic-mri.json --output reports/eval.json --no-observability
+```
 
 ## Synthetic Smoke Dataset
 
-Use the synthetic generator for engineering checks when no real DICOM dataset is available:
+Use the synthetic generator for engineering checks when no real dataset is available:
 
 ```sh
 uv run --extra dev python scripts/generate_synthetic_dataset.py --output-root /private/tmp/glioma-smoke --n-patients 2 --shape 12,12,12
-uv run --extra dev python -m glioma_recurrence preprocess --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --prescription-dose-gy 60
+uv run --extra dev python -m glioma_recurrence preprocess --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived
 uv run --extra dev python -m glioma_recurrence make-labels --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --assume-baseline-space
-uv run --extra dev python -m glioma_recurrence train --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model dose-distance --output /private/tmp/glioma-smoke/models/dose-distance.json --prescription-dose-gy 60
-uv run --extra dev python -m glioma_recurrence evaluate --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model-path /private/tmp/glioma-smoke/models/dose-distance.json --output /private/tmp/glioma-smoke/reports/eval.json --splits validation --write-predictions
+uv run --extra dev python -m glioma_recurrence train --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model tumor-distance --output /private/tmp/glioma-smoke/models/tumor-distance.json
+uv run --extra dev python -m glioma_recurrence train --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model voxel-logistic-mri --output /private/tmp/glioma-smoke/models/voxel-logistic-mri.json
+uv run --extra dev python -m glioma_recurrence evaluate --manifest /private/tmp/glioma-smoke/patients.csv --derived-root /private/tmp/glioma-smoke/derived --model-path /private/tmp/glioma-smoke/models/voxel-logistic-mri.json --output /private/tmp/glioma-smoke/reports/eval.json --splits validation --write-predictions
 ```
 
 Synthetic data is only for pipeline validation. It is not scientifically meaningful.
 
-## CFB-GBM External Pilot
+## UCSD-PTGBM Workflow
 
-When CFB-GBM is stored on an external volume, prepare a small copied pilot workspace on that same volume. Do not symlink source images into `derived/`; `preprocess` writes outputs in place.
+Download UCSD-PTGBM images/segmentations and clinical data from TCIA onto external storage, then prepare a copied working set:
 
 ```sh
-uv run --extra dev python scripts/prepare_cfb_gbm_dataset.py --source-root /Volumes/0437897195U/CFB-GBM --output-root /Volumes/0437897195U/CFB-GBM-pipeline-pilot --max-cases 2 --allow-gtv-proxy-labels
+uv run --extra dev python scripts/prepare_ucsd_ptgbm_dataset.py --source-root /Volumes/External/UCSD-PTGBM --clinical-table /Volumes/External/UCSD-PTGBM/clinical.xlsx --output-root /Volumes/External/UCSD-PTGBM-pipeline --max-subjects 20
 ```
 
-`--allow-gtv-proxy-labels` uses baseline GTV masks only as smoke-test proxy labels. They are not recurrence labels and must not be used for scientific recurrence modeling.
+The adapter selects subjects with at least two complete MRI+mask timepoints, uses the earliest complete post-treatment timepoint as baseline, and uses the earliest later residual/recurrent tumor timepoint as the recurrence label. It copies baseline T1c, baseline FLAIR, `baseline_tumor_mask.nii.gz`, follow-up T1c label-reference images, and reviewed follow-up tumor masks into the working set.
+
+Default `make-labels` registration is SimpleITK MRI-to-MRI registration. Use `--registration-mode affine` or `--assume-baseline-space` only when that geometry fallback has been checked.
 
 ## Manifest Columns
 
@@ -85,7 +94,6 @@ Required:
 - `baseline_scan_date`
 - `baseline_t1c_series_uid`
 - `baseline_flair_series_uid`
-- `rtdose_sop_instance_uid`
 - `recurrence_scan_date`
 - `recurrence_adjudication`
 - `reviewed_recurrence_mask_path`
@@ -93,8 +101,11 @@ Required:
 
 Optional but recommended:
 
+- `reviewed_recurrence_reference_image_path`: follow-up T1c used only for label registration.
+- `source_dataset`
+- `baseline_timepoint_id`
+- `recurrence_timepoint_id`
 - `radiotherapy_end_date`
-- `prescription_dose_gy`
 
 ## Derived Files
 
@@ -102,7 +113,7 @@ Each case directory stores:
 
 - `baseline_t1c.nii.gz`
 - `baseline_flair.nii.gz`
-- `dose_gy_on_baseline.nii.gz`
+- `baseline_tumor_mask.nii.gz`
 - `recurrence_mask_on_baseline.nii.gz`
 - `brain_mask.nii.gz`
 - `recurrence_risk.nii.gz`

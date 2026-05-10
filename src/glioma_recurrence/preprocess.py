@@ -1,4 +1,4 @@
-"""Preprocessing utilities for baseline MRI and dose volumes."""
+"""Preprocessing utilities for MRI-only baseline volumes."""
 
 from __future__ import annotations
 
@@ -46,38 +46,24 @@ def brain_mask_from_modalities(t1c: np.ndarray, flair: np.ndarray) -> np.ndarray
     return candidate.astype(np.uint8)
 
 
-def resample_flair_and_dose_to_t1c(
+def resample_flair_and_tumor_to_t1c(
     t1c: Volume,
     flair: Volume,
-    dose_gy: Volume,
+    baseline_tumor_mask: Volume,
 ) -> tuple[Volume, Volume]:
     flair_on_t1c = resample_to_reference(flair, t1c, order=1, fill_value=0.0)
-    dose_on_t1c = resample_to_reference(dose_gy, t1c, order=1, fill_value=0.0)
-    dose_on_t1c = Volume(np.maximum(dose_on_t1c.data, 0.0).astype(np.float32), dose_on_t1c.affine, dose_on_t1c.metadata)
-    return flair_on_t1c, dose_on_t1c
+    from .geometry import resample_mask_to_reference
+
+    tumor_on_t1c = resample_mask_to_reference(baseline_tumor_mask, t1c)
+    return flair_on_t1c, tumor_on_t1c
 
 
-def dose_channels(dose_gy: np.ndarray, prescription_dose_gy: float) -> tuple[np.ndarray, np.ndarray]:
-    if prescription_dose_gy <= 0:
-        raise ValueError("prescription_dose_gy must be positive")
-    physical = np.asarray(dose_gy, dtype=np.float32)
-    normalized = np.clip(physical / float(prescription_dose_gy), 0.0, 2.0).astype(np.float32)
-    return physical, normalized
-
-
-def distance_to_treatment_field_mm(
-    dose_gy: np.ndarray,
-    spacing_mm: tuple[float, float, float],
-    *,
-    threshold_gy: float = 0.1,
-) -> np.ndarray:
-    field = np.asarray(dose_gy) >= threshold_gy
+def distance_to_mask_mm(mask: np.ndarray, spacing_mm: tuple[float, float, float]) -> np.ndarray:
+    binary = np.asarray(mask).astype(bool)
     try:
         from scipy.ndimage import distance_transform_edt
     except ImportError as exc:
-        raise RuntimeError("scipy is required for distance-to-field computation") from exc
-    outside_distance = distance_transform_edt(~field, sampling=spacing_mm)
-    inside_distance = -distance_transform_edt(field, sampling=spacing_mm)
-    distance = np.where(field, inside_distance, outside_distance)
-    return distance.astype(np.float32)
-
+        raise RuntimeError("scipy is required for distance-to-mask computation") from exc
+    outside_distance = distance_transform_edt(~binary, sampling=spacing_mm)
+    inside_distance = -distance_transform_edt(binary, sampling=spacing_mm)
+    return np.where(binary, inside_distance, outside_distance).astype(np.float32)

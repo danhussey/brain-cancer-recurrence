@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from .case import CaseData
-from .preprocess import dose_channels
+from .preprocess import distance_to_mask_mm
 
 
 class DeepLearningUnavailable(RuntimeError):
@@ -30,8 +30,8 @@ def require_deep_dependencies():
 def build_unet(*, in_channels: int = 4, out_channels: int = 1):
     """Build the V1 MONAI 3D U-Net architecture.
 
-    Inputs are baseline T1c, baseline FLAIR, physical dose in Gy, and dose
-    normalized by prescription dose. Follow-up imaging is deliberately absent.
+    Inputs are baseline T1c, baseline FLAIR, baseline tumor mask, and distance
+    from baseline tumor. Follow-up imaging is deliberately absent.
     """
 
     monai, _torch = require_deep_dependencies()
@@ -58,7 +58,6 @@ def train_unet(
     cases: list[CaseData],
     *,
     output_path: str | Path,
-    prescription_dose_gy: float,
     config: DeepTrainingConfig = DeepTrainingConfig(),
     seed: int = 13,
     device: str | None = None,
@@ -87,7 +86,6 @@ def train_unet(
         for case in cases:
             x_np, y_np = sample_training_patch(
                 case,
-                prescription_dose_gy=prescription_dose_gy,
                 patch_size=config.patch_size,
                 rng=rng,
             )
@@ -113,9 +111,8 @@ def train_unet(
                 "focal_gamma": config.focal_gamma,
                 "positive_weight": config.positive_weight,
             },
-            "prescription_dose_gy": float(prescription_dose_gy),
             "history": history,
-            "input_channels": ["baseline_t1c", "baseline_flair", "dose_gy", "dose_prescription_normalized"],
+            "input_channels": ["baseline_t1c", "baseline_flair", "baseline_tumor_mask", "distance_to_baseline_tumor"],
             "safety": "follow-up scans are labels only and are not prediction inputs",
         },
         target,
@@ -129,9 +126,8 @@ def predict_unet(case: CaseData, *, checkpoint_path: str | Path, device: str | N
     model = build_unet(in_channels=4, out_channels=1).to(runtime_device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
-    prescription = float(checkpoint["prescription_dose_gy"])
     patch_size = tuple(int(value) for value in checkpoint.get("config", {}).get("patch_size", (96, 96, 96)))
-    features = case_input_channels(case, prescription_dose_gy=prescription)
+    features = case_input_channels(case)
     x = torch.from_numpy(features[None]).to(runtime_device)
     with torch.no_grad():
         logits = monai.inferers.sliding_window_inference(
@@ -146,14 +142,15 @@ def predict_unet(case: CaseData, *, checkpoint_path: str | Path, device: str | N
     return np.clip(risk, 0.0, 1.0)
 
 
-def case_input_channels(case: CaseData, *, prescription_dose_gy: float) -> np.ndarray:
-    physical_dose, dose_norm = dose_channels(case.dose_gy.data, prescription_dose_gy)
+def case_input_channels(case: CaseData) -> np.ndarray:
+    baseline_tumor = case.baseline_tumor_mask.data.astype(bool)
+    distance = distance_to_mask_mm(baseline_tumor, case.t1c.spacing)
     return np.stack(
         [
             case.t1c.data.astype(np.float32),
             case.flair.data.astype(np.float32),
-            physical_dose.astype(np.float32),
-            dose_norm.astype(np.float32),
+            baseline_tumor.astype(np.float32),
+            distance.astype(np.float32),
         ],
         axis=0,
     )
@@ -162,13 +159,12 @@ def case_input_channels(case: CaseData, *, prescription_dose_gy: float) -> np.nd
 def sample_training_patch(
     case: CaseData,
     *,
-    prescription_dose_gy: float,
     patch_size: tuple[int, int, int],
     rng: np.random.Generator,
 ) -> tuple[np.ndarray, np.ndarray]:
     if case.recurrence_mask is None:
         raise ValueError(f"{case.patient_id}: recurrence mask is required for deep training")
-    features = case_input_channels(case, prescription_dose_gy=prescription_dose_gy)
+    features = case_input_channels(case)
     label = case.recurrence_mask.data.astype(np.float32)[None]
     center = choose_patch_center(case, rng=rng)
     x = crop_or_pad(features, center=center, patch_size=patch_size)
@@ -178,13 +174,13 @@ def sample_training_patch(
 
 def choose_patch_center(case: CaseData, *, rng: np.random.Generator) -> tuple[int, int, int]:
     labels = case.recurrence_mask.data.astype(bool) if case.recurrence_mask is not None else None
-    dose_region = case.dose_gy.data > max(0.1, 0.1 * float(np.nanmax(case.dose_gy.data)))
+    baseline_tumor = case.baseline_tumor_mask.data.astype(bool)
     brain = case.brain_mask.data.astype(bool)
     candidates = None
     if labels is not None and np.any(labels) and rng.random() < 0.6:
         candidates = np.argwhere(labels)
-    elif np.any(dose_region & brain):
-        candidates = np.argwhere(dose_region & brain)
+    elif np.any(baseline_tumor & brain):
+        candidates = np.argwhere(baseline_tumor & brain)
     elif np.any(brain):
         candidates = np.argwhere(brain)
     if candidates is None or candidates.size == 0:

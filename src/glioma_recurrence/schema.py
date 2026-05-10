@@ -31,13 +31,15 @@ class PatientRecord:
     baseline_scan_date: date
     baseline_t1c_series_uid: str
     baseline_flair_series_uid: str
-    rtdose_sop_instance_uid: str
     recurrence_scan_date: date | None
     recurrence_adjudication: str
     reviewed_recurrence_mask_path: str
     split: str
+    reviewed_recurrence_reference_image_path: str = ""
+    source_dataset: str = ""
+    baseline_timepoint_id: str = ""
+    recurrence_timepoint_id: str = ""
     radiotherapy_end_date: date | None = None
-    prescription_dose_gy: float | None = None
 
     @property
     def normalized_split(self) -> str:
@@ -75,16 +77,6 @@ def parse_date(value: str, *, column: str) -> date | None:
     raise ManifestError(f"{column} must be YYYY-MM-DD; got {value!r}")
 
 
-def parse_optional_float(value: str, *, column: str) -> float | None:
-    value = value.strip()
-    if not value:
-        return None
-    try:
-        return float(value)
-    except ValueError as exc:
-        raise ManifestError(f"{column} must be numeric; got {value!r}") from exc
-
-
 def read_manifest(path: str | Path) -> list[PatientRecord]:
     manifest_path = Path(path)
     with manifest_path.open(newline="") as handle:
@@ -113,13 +105,15 @@ def _row_to_record(row: dict[str, str], *, row_number: int) -> PatientRecord:
         baseline_scan_date=parse_required_date(row["baseline_scan_date"], "baseline_scan_date", row_number),
         baseline_t1c_series_uid=require_text(row, "baseline_t1c_series_uid", row_number),
         baseline_flair_series_uid=require_text(row, "baseline_flair_series_uid", row_number),
-        rtdose_sop_instance_uid=require_text(row, "rtdose_sop_instance_uid", row_number),
-        recurrence_scan_date=parse_date(row.get("recurrence_scan_date", ""), column="recurrence_scan_date"),
+        recurrence_scan_date=parse_date(row.get("recurrence_scan_date") or "", column="recurrence_scan_date"),
         recurrence_adjudication=require_text(row, "recurrence_adjudication", row_number),
-        reviewed_recurrence_mask_path=row.get("reviewed_recurrence_mask_path", "").strip(),
+        reviewed_recurrence_mask_path=(row.get("reviewed_recurrence_mask_path") or "").strip(),
         split=split,
-        radiotherapy_end_date=parse_date(row.get("radiotherapy_end_date", ""), column="radiotherapy_end_date"),
-        prescription_dose_gy=parse_optional_float(row.get("prescription_dose_gy", ""), column="prescription_dose_gy"),
+        reviewed_recurrence_reference_image_path=(row.get("reviewed_recurrence_reference_image_path") or "").strip(),
+        source_dataset=(row.get("source_dataset") or "").strip(),
+        baseline_timepoint_id=(row.get("baseline_timepoint_id") or "").strip(),
+        recurrence_timepoint_id=(row.get("recurrence_timepoint_id") or "").strip(),
+        radiotherapy_end_date=parse_date(row.get("radiotherapy_end_date") or "", column="radiotherapy_end_date"),
     )
 
 
@@ -166,4 +160,3 @@ def filter_records(
             continue
         selected.append(record)
     return selected
-

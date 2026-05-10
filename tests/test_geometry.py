@@ -3,22 +3,16 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from glioma_recurrence.geometry import GeometryError, Volume, assert_mask_round_trip, dicom_affine, voxel_to_world, world_to_voxel
+from glioma_recurrence.geometry import GeometryError, Volume, assert_mask_round_trip, voxel_to_world, world_to_voxel
 
 
-def test_dicom_affine_maps_array_axes_to_patient_coordinates():
-    affine = dicom_affine(
-        image_orientation_patient=[1, 0, 0, 0, 1, 0],
-        image_position_patient=[0, 0, 0],
-        pixel_spacing=[2, 3],
-        slice_spacing=4,
-    )
+def test_affine_maps_voxel_indices_to_world_and_back():
+    affine = np.eye(4)
+    affine[:3, :3] = np.diag([2, 3, 4])
+    affine[:3, 3] = [10, 20, 30]
 
-    assert np.allclose(affine[:3, 0], [0, 2, 0])
-    assert np.allclose(affine[:3, 1], [3, 0, 0])
-    assert np.allclose(affine[:3, 2], [0, 0, 4])
     point = voxel_to_world(affine, np.asarray([[1, 2, 3]], dtype=float))[0]
-    assert np.allclose(point, [6, 2, 12])
+    assert np.allclose(point, [12, 26, 42])
     restored = world_to_voxel(affine, np.asarray([point]))[0]
     assert np.allclose(restored, [1, 2, 3])
 
@@ -38,4 +32,3 @@ def test_mask_round_trip_detects_transform_silent_changes():
 def test_invalid_affine_is_rejected():
     with pytest.raises(GeometryError, match="singular"):
         Volume(np.zeros((2, 2, 2)), np.zeros((4, 4)))
-

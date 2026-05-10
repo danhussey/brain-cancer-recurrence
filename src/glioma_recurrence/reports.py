@@ -29,13 +29,19 @@ def write_case_qc_report(
     panels = [
         ("T1c", case.t1c.data),
         ("FLAIR", case.flair.data),
-        ("Dose Gy", case.dose_gy.data),
-        (
-            "Recurrence Mask On Baseline",
-            case.recurrence_mask.data if case.recurrence_mask is not None else np.zeros(case.t1c.shape, dtype=np.float32),
-        ),
-        ("Recurrence Risk", risk.data if risk is not None else np.zeros(case.t1c.shape, dtype=np.float32)),
+        ("Baseline Tumor Mask", case.baseline_tumor_mask.data),
     ]
+    panels.extend(
+        [
+            (
+                "Recurrence Mask On Baseline",
+                case.recurrence_mask.data
+                if case.recurrence_mask is not None
+                else np.zeros(case.t1c.shape, dtype=np.float32),
+            ),
+            ("Recurrence Risk", risk.data if risk is not None else np.zeros(case.t1c.shape, dtype=np.float32)),
+        ]
+    )
     image_rows = _write_png_panels(target_dir, panels)
     if not image_rows:
         image_rows = [
@@ -86,4 +92,3 @@ def _write_png_panels(target_dir: Path, panels: list[tuple[str, np.ndarray]]) ->
         plt.close(fig)
         rows.append(f'<li>{html.escape(name)}<br><img src="{html.escape(filename)}" alt="{html.escape(name)}"></li>')
     return rows
-

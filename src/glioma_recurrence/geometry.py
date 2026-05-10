@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
-
 import numpy as np
 
 
@@ -67,52 +65,6 @@ def world_to_voxel(affine: np.ndarray, points: np.ndarray) -> np.ndarray:
     homogeneous = np.concatenate([points, np.ones((*points.shape[:-1], 1))], axis=-1)
     inverse = np.linalg.inv(affine)
     return homogeneous @ inverse.T[..., :3]
-
-
-def dicom_affine(
-    image_orientation_patient: Sequence[float],
-    image_position_patient: Sequence[float],
-    pixel_spacing: Sequence[float],
-    slice_spacing: float,
-) -> np.ndarray:
-    """Create an affine for array axes `(row, column, slice)` from DICOM tags.
-
-    DICOM orientation stores the row direction first and column direction second.
-    The first ndarray axis indexes rows, so it advances along the DICOM column
-    direction. The second ndarray axis indexes columns, so it advances along the
-    DICOM row direction.
-    """
-
-    if len(image_orientation_patient) != 6:
-        raise GeometryError("ImageOrientationPatient must contain six values")
-    if len(image_position_patient) != 3:
-        raise GeometryError("ImagePositionPatient must contain three values")
-    if len(pixel_spacing) != 2:
-        raise GeometryError("PixelSpacing must contain row and column spacing")
-    row_direction = _unit_vector(image_orientation_patient[:3], "row direction")
-    column_direction = _unit_vector(image_orientation_patient[3:], "column direction")
-    normal_direction = _unit_vector(np.cross(row_direction, column_direction), "slice normal")
-    row_spacing = float(pixel_spacing[0])
-    column_spacing = float(pixel_spacing[1])
-    slice_spacing = float(slice_spacing)
-    if row_spacing <= 0 or column_spacing <= 0 or slice_spacing == 0:
-        raise GeometryError("DICOM spacing values must be positive except signed slice direction")
-
-    affine = np.eye(4, dtype=float)
-    affine[:3, 0] = column_direction * row_spacing
-    affine[:3, 1] = row_direction * column_spacing
-    affine[:3, 2] = normal_direction * slice_spacing
-    affine[:3, 3] = np.asarray(image_position_patient, dtype=float)
-    validate_affine(affine)
-    return affine
-
-
-def _unit_vector(values: Sequence[float] | np.ndarray, label: str) -> np.ndarray:
-    vector = np.asarray(values, dtype=float)
-    norm = float(np.linalg.norm(vector))
-    if norm <= 1e-8:
-        raise GeometryError(f"{label} is zero length")
-    return vector / norm
 
 
 def resample_to_reference(
@@ -195,4 +147,3 @@ def assert_mask_round_trip(mask: Volume, target: Volume) -> None:
     if not np.array_equal(mask.data.astype(bool), restored.data.astype(bool)):
         diff = int(np.count_nonzero(mask.data.astype(bool) != restored.data.astype(bool)))
         raise GeometryError(f"mask round-trip changed {diff} voxels; check transforms/orientation")
-

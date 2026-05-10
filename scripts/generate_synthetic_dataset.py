@@ -2,9 +2,9 @@
 """Generate a tiny synthetic glioma recurrence-risk dataset.
 
 The generated dataset is for engineering smoke tests only. It creates the
-post-ingest derived NIfTI layout plus a `patients.csv` manifest and reviewed
-mask files, so the real CLI stages can run from `preprocess` onward without
-public data downloads or patient data.
+derived NIfTI layout plus a `patients.csv` manifest and reviewed mask files, so
+the real CLI stages can run from `preprocess` onward without public data
+downloads or patient data.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 
-from glioma_recurrence.constants import BASELINE_FLAIR, BASELINE_T1C, BRAIN_MASK, DOSE_ON_BASELINE
+from glioma_recurrence.constants import BASELINE_FLAIR, BASELINE_T1C, BASELINE_TUMOR_MASK, BRAIN_MASK
 from glioma_recurrence.geometry import Volume
 from glioma_recurrence.nifti import write_volume
 
@@ -28,6 +28,7 @@ class SyntheticDatasetPaths:
     manifest: Path
     derived_root: Path
     masks_root: Path
+    label_refs_root: Path
     models_root: Path
     reports_root: Path
 
@@ -38,21 +39,18 @@ def generate_synthetic_dataset(
     n_patients: int = 3,
     shape: tuple[int, int, int] = (16, 16, 16),
     seed: int = 13,
-    prescription_dose_gy: float = 60.0,
 ) -> SyntheticDatasetPaths:
     if n_patients < 2:
         raise ValueError("n_patients must be at least 2 so train and validation splits exist")
     if any(value < 8 for value in shape):
         raise ValueError("all shape dimensions must be at least 8")
-    if prescription_dose_gy <= 0:
-        raise ValueError("prescription_dose_gy must be positive")
-
     root = Path(output_root)
     derived_root = root / "derived"
     masks_root = root / "masks"
+    label_refs_root = root / "label_refs"
     models_root = root / "models"
     reports_root = root / "reports"
-    for directory in (derived_root, masks_root, models_root, reports_root):
+    for directory in (derived_root, masks_root, label_refs_root, models_root, reports_root):
         directory.mkdir(parents=True, exist_ok=True)
 
     rng = np.random.default_rng(seed)
@@ -68,28 +66,31 @@ def generate_synthetic_dataset(
             shape=shape,
             patient_index=index,
             rng=rng,
-            prescription_dose_gy=prescription_dose_gy,
         )
         write_volume(Volume(volumes["t1c"], affine), case_dir / BASELINE_T1C, dtype=np.float32)
         write_volume(Volume(volumes["flair"], affine), case_dir / BASELINE_FLAIR, dtype=np.float32)
-        write_volume(Volume(volumes["dose"], affine), case_dir / DOSE_ON_BASELINE, dtype=np.float32)
+        write_volume(Volume(volumes["baseline_tumor"], affine), case_dir / BASELINE_TUMOR_MASK, dtype=np.uint8)
         write_volume(Volume(volumes["brain"], affine), case_dir / BRAIN_MASK, dtype=np.uint8)
 
         reviewed_mask_path = masks_root / f"{patient_id}_reviewed_mask.nii.gz"
+        label_ref_path = label_refs_root / f"{patient_id}_followup_t1c.nii.gz"
         write_volume(Volume(volumes["label"], affine), reviewed_mask_path, dtype=np.uint8)
+        write_volume(Volume(volumes["t1c"], affine), label_ref_path, dtype=np.float32)
         rows.append(
             {
                 "patient_id": patient_id,
                 "baseline_scan_date": "2024-01-01",
                 "baseline_t1c_series_uid": f"synthetic-t1c-{patient_id}",
                 "baseline_flair_series_uid": f"synthetic-flair-{patient_id}",
-                "rtdose_sop_instance_uid": f"synthetic-rtdose-{patient_id}",
                 "recurrence_scan_date": "2024-09-01",
                 "recurrence_adjudication": "confirmed",
                 "reviewed_recurrence_mask_path": str(reviewed_mask_path),
                 "split": split,
+                "reviewed_recurrence_reference_image_path": str(label_ref_path),
+                "source_dataset": "synthetic",
+                "baseline_timepoint_id": "t0",
+                "recurrence_timepoint_id": "t1",
                 "radiotherapy_end_date": "2024-03-01",
-                "prescription_dose_gy": f"{prescription_dose_gy:g}",
             }
         )
 
@@ -104,12 +105,11 @@ def generate_synthetic_dataset(
         "n_patients": n_patients,
         "shape": list(shape),
         "seed": seed,
-        "prescription_dose_gy": prescription_dose_gy,
         "manifest": str(manifest),
         "derived_root": str(derived_root),
     }
     (root / "synthetic_dataset.json").write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n")
-    return SyntheticDatasetPaths(root, manifest, derived_root, masks_root, models_root, reports_root)
+    return SyntheticDatasetPaths(root, manifest, derived_root, masks_root, label_refs_root, models_root, reports_root)
 
 
 def _split_for_index(index: int, n_patients: int) -> str:
@@ -127,7 +127,6 @@ def _make_case_volumes(
     shape: tuple[int, int, int],
     patient_index: int,
     rng: np.random.Generator,
-    prescription_dose_gy: float,
 ) -> dict[str, np.ndarray]:
     grid = np.indices(shape).astype(np.float32)
     center = np.asarray(
@@ -140,13 +139,11 @@ def _make_case_volumes(
     )[:, None, None, None]
     distance = np.sqrt(((grid - center) ** 2).sum(axis=0))
     recurrence_radius = max(2.0, min(shape) * 0.14)
-    treatment_radius = max(3.0, min(shape) * 0.28)
     label = (distance <= recurrence_radius).astype(np.uint8)
+    baseline_tumor = (distance <= recurrence_radius * 1.25).astype(np.uint8)
     brain_center = np.asarray(shape, dtype=np.float32)[:, None, None, None] / 2.0
     brain_distance = np.sqrt((((grid - brain_center) / np.asarray(shape, dtype=np.float32)[:, None, None, None]) ** 2).sum(axis=0))
     brain = (brain_distance <= 0.52).astype(np.uint8)
-    dose = prescription_dose_gy * np.exp(-(distance / treatment_radius) ** 2)
-    dose *= brain
     edema = np.exp(-(distance / (recurrence_radius * 1.7)) ** 2) * brain
     enhancing = np.exp(-(distance / (recurrence_radius * 0.9)) ** 2) * brain
     t1c = (0.05 * rng.normal(size=shape) + 0.25 * brain + 2.0 * enhancing).astype(np.float32)
@@ -154,8 +151,8 @@ def _make_case_volumes(
     return {
         "t1c": t1c * brain,
         "flair": flair * brain,
-        "dose": dose.astype(np.float32),
         "brain": brain.astype(np.uint8),
+        "baseline_tumor": (baseline_tumor & brain).astype(np.uint8),
         "label": (label & brain).astype(np.uint8),
     }
 
@@ -173,7 +170,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-patients", type=int, default=3)
     parser.add_argument("--shape", type=parse_shape, default=(16, 16, 16))
     parser.add_argument("--seed", type=int, default=13)
-    parser.add_argument("--prescription-dose-gy", type=float, default=60.0)
     return parser
 
 
@@ -184,7 +180,6 @@ def main(argv: list[str] | None = None) -> int:
         n_patients=args.n_patients,
         shape=args.shape,
         seed=args.seed,
-        prescription_dose_gy=args.prescription_dose_gy,
     )
     print(paths.manifest)
     return 0
@@ -192,4 +187,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

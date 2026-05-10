@@ -18,6 +18,6 @@ uv run --extra dev python -m glioma_recurrence --help
 
 ## First Dataset
 
-Start with a de-identified pilot manifest and one case. Run `ingest`, `preprocess`, `make-labels`, `train`, `evaluate`, and `predict` in order. Review the generated QC HTML before trusting any metric.
+Start with a de-identified pilot manifest and one case. Run `preprocess`, `make-labels`, `train`, `evaluate`, and `predict` in order. Review the generated QC HTML before trusting any metric.
 
-If no real data is available, use the synthetic generator to exercise every post-ingest stage. Synthetic outputs validate mechanics only and must not be used for scientific conclusions.
+If no real data is available, use the synthetic generator to exercise every stage. Synthetic outputs validate mechanics only and must not be used for scientific conclusions.
