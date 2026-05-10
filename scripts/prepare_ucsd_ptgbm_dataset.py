@@ -47,6 +47,8 @@ EXCLUDED_STATUS_TERMS = (
 )
 CONFIRMED_STATUS_TERMS = ("pathology", "histolog", "clinically confirmed", "confirmed")
 BRATS_TARGET_LABELS = {1, 3, 4}
+IMAGING_ONLY_RECURRENCE_STATUS = "imaging-only follow-up tumor segmentation present"
+IMAGING_ONLY_RECURRENCE_ADJUDICATION = "imaging_followup_segmentation_present"
 
 
 @dataclass(frozen=True)
@@ -94,16 +96,26 @@ class PreparedUcsdDataset:
 
 def prepare_ucsd_dataset(
     source_root: str | Path,
-    clinical_table: str | Path,
+    clinical_table: str | Path | None,
     output_root: str | Path,
     *,
     max_subjects: int | None = None,
     overwrite: bool = False,
     dry_run: bool = False,
+    allow_imaging_only_labels: bool = False,
 ) -> PreparedUcsdDataset:
     source = Path(source_root)
-    rows = read_clinical_timepoints(clinical_table)
     niftis = sorted(find_nifti_files(source))
+    if clinical_table is None:
+        if not allow_imaging_only_labels:
+            raise RuntimeError(
+                "UCSD clinical table is required unless --allow-imaging-only-labels is passed. "
+                "The imaging-only mode is provisional and uses later tumor segmentations as labels without "
+                "clinical progression adjudication."
+            )
+        rows = infer_timepoints_from_filenames(niftis)
+    else:
+        rows = read_clinical_timepoints(clinical_table)
     pairs, skipped = select_pairs(rows, niftis, max_subjects=max_subjects)
     if not pairs:
         raise RuntimeError("no UCSD-PTGBM subjects had an eligible baseline and later recurrence label")
@@ -156,7 +168,8 @@ def prepare_ucsd_dataset(
             writer.writerows(manifest_rows)
         summary = {
             "source_root": str(source),
-            "clinical_table": str(clinical_table),
+            "clinical_table": str(clinical_table) if clinical_table is not None else "",
+            "allow_imaging_only_labels": allow_imaging_only_labels,
             "manifest": str(manifest),
             "derived_root": str(derived_root),
             "selected_subjects": [pair.subject_id for pair in pairs],
@@ -176,6 +189,43 @@ def prepare_ucsd_dataset(
         selected_subjects=[pair.subject_id for pair in pairs],
         skipped_subjects=skipped,
     )
+
+
+def infer_timepoints_from_filenames(niftis: list[Path]) -> list[ClinicalTimepoint]:
+    """Build provisional rows when only UCSD image folders have been downloaded."""
+
+    by_subject: dict[str, set[str]] = {}
+    for path in niftis:
+        identifiers = infer_subject_timepoint(path)
+        if identifiers is None:
+            continue
+        subject_id, timepoint_id = identifiers
+        by_subject.setdefault(subject_id, set()).add(timepoint_id)
+
+    rows: list[ClinicalTimepoint] = []
+    for subject_id in sorted(by_subject, key=natural_key):
+        for index, timepoint_id in enumerate(sorted(by_subject[subject_id], key=natural_key)):
+            rows.append(
+                ClinicalTimepoint(
+                    subject_id=subject_id,
+                    timepoint_id=timepoint_id,
+                    scan_date=date(1900, 1, min(index + 1, 28)),
+                    status="imaging-only baseline" if index == 0 else IMAGING_ONLY_RECURRENCE_STATUS,
+                    row_index=len(rows) + 1,
+                )
+            )
+    return rows
+
+
+def infer_subject_timepoint(path: Path) -> tuple[str, str] | None:
+    text = str(path)
+    real_match = re.search(r"(UCSD-PTGBM-\d{4})_(\d+)", text)
+    if real_match:
+        return real_match.group(1), real_match.group(2)
+    parts = path.parts
+    if len(parts) < 3:
+        return None
+    return parts[-3], parts[-2]
 
 
 def read_clinical_timepoints(path: str | Path) -> list[ClinicalTimepoint]:
@@ -389,6 +439,11 @@ def timepoint_sort_key(timepoint: ClinicalTimepoint) -> tuple[int, object]:
 
 def recurrence_adjudication(status: str) -> str | None:
     normalized = status.lower()
+    if normalize_identifier(normalized) in {
+        IMAGING_ONLY_RECURRENCE_ADJUDICATION,
+        normalize_identifier(IMAGING_ONLY_RECURRENCE_STATUS),
+    }:
+        return IMAGING_ONLY_RECURRENCE_ADJUDICATION
     has_positive = any(term in normalized for term in POSITIVE_STATUS_TERMS)
     has_excluded = any(term in normalized for term in EXCLUDED_STATUS_TERMS)
     if not has_positive or has_excluded:
@@ -561,11 +616,19 @@ def write_mask(source: MaskSource, target: Path, *, overwrite: bool) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", required=True, help="Extracted UCSD-PTGBM NIfTI root")
-    parser.add_argument("--clinical-table", required=True, help="UCSD clinical CSV/TSV/XLSX table")
+    parser.add_argument("--clinical-table", default=None, help="UCSD clinical CSV/TSV/XLSX table")
     parser.add_argument("--output-root", required=True, help="External workspace for copied derivatives")
     parser.add_argument("--max-subjects", type=int, default=None)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--allow-imaging-only-labels",
+        action="store_true",
+        help=(
+            "Infer longitudinal pairs from image filenames when the clinical table is unavailable. "
+            "This is provisional and does not provide clinical progression adjudication."
+        ),
+    )
     return parser
 
 
@@ -578,6 +641,7 @@ def main(argv: list[str] | None = None) -> int:
         max_subjects=args.max_subjects,
         overwrite=args.overwrite,
         dry_run=args.dry_run,
+        allow_imaging_only_labels=args.allow_imaging_only_labels,
     )
     print(f"selected_subjects={','.join(prepared.selected_subjects)}")
     print(f"manifest={prepared.manifest}")

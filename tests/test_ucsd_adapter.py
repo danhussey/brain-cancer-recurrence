@@ -106,3 +106,36 @@ def test_prepare_ucsd_dataset_pairs_longitudinal_recurrence_and_skips_ambiguous_
     assert Path(rows[0]["reviewed_recurrence_reference_image_path"]).exists()
     assert read_manifest(prepared.manifest)[0].source_dataset == "UCSD-PTGBM"
     assert int(read_volume(prepared.derived_root / rows[0]["patient_id"] / BASELINE_TUMOR_MASK).data.sum()) > 0
+
+
+def test_prepare_ucsd_dataset_requires_explicit_imaging_only_mode_without_clinical_table(tmp_path: Path):
+    adapter = load_ucsd_adapter()
+    source = tmp_path / "UCSD-PTGBM"
+    write_fake_ucsd_timepoint(source, "S1", "T0")
+    write_fake_ucsd_timepoint(source, "S1", "T1")
+
+    try:
+        adapter.prepare_ucsd_dataset(source, None, tmp_path / "prepared")
+    except RuntimeError as exc:
+        assert "--allow-imaging-only-labels" in str(exc)
+    else:
+        raise AssertionError("expected missing clinical table to require explicit imaging-only mode")
+
+
+def test_prepare_ucsd_dataset_infers_provisional_pairs_from_filenames(tmp_path: Path):
+    adapter = load_ucsd_adapter()
+    source = tmp_path / "UCSD-PTGBM"
+    write_fake_ucsd_timepoint(source, "S1", "T0")
+    write_fake_ucsd_timepoint(source, "S1", "T1")
+    write_fake_ucsd_timepoint(source, "S2", "T0")
+    output = tmp_path / "prepared"
+
+    prepared = adapter.prepare_ucsd_dataset(source, None, output, allow_imaging_only_labels=True)
+
+    rows = list(csv.DictReader(prepared.manifest.open()))
+    assert prepared.selected_subjects == ["S1"]
+    assert prepared.skipped_subjects["S2"] == "fewer than two complete MRI+mask timepoints"
+    assert rows[0]["recurrence_adjudication"] == "imaging_followup_segmentation_present"
+    assert rows[0]["baseline_timepoint_id"] == "T0"
+    assert rows[0]["recurrence_timepoint_id"] == "T1"
+    assert (output / "ucsd_prepare_summary.json").exists()

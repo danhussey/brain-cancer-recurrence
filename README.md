@@ -84,6 +84,14 @@ uv run --extra dev python scripts/prepare_ucsd_ptgbm_dataset.py --source-root /V
 
 The adapter selects subjects with at least two complete MRI+mask timepoints, uses the earliest complete post-treatment timepoint as baseline, and uses the earliest later residual/recurrent tumor timepoint as the recurrence label. It copies baseline T1c, baseline FLAIR, `baseline_tumor_mask.nii.gz`, follow-up T1c label-reference images, and reviewed follow-up tumor masks into the working set.
 
+If images arrive before the clinical workbook, make a provisional filename-only working set explicitly:
+
+```sh
+uv run --extra dev python scripts/prepare_ucsd_ptgbm_dataset.py --source-root /Volumes/External/UCSD-PTGBM --output-root /Volumes/External/UCSD-PTGBM-pipeline --allow-imaging-only-labels --max-subjects 20
+```
+
+This mode is useful for pipeline bring-up only. It pairs the earliest complete image timepoint with the earliest later complete tumor segmentation and marks labels as `imaging_followup_segmentation_present`, without clinical progression adjudication.
+
 Default `make-labels` registration is SimpleITK MRI-to-MRI registration. Use `--registration-mode affine` or `--assume-baseline-space` only when that geometry fallback has been checked.
 
 ## Manifest Columns
