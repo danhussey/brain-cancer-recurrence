@@ -10,14 +10,14 @@
 ## First Commands
 
 ```sh
+uv sync --extra dev
 uv run --extra dev pytest
 uv run --extra dev python scripts/validate_knowledge_store.py
-uv run --extra dev python scripts/generate_synthetic_dataset.py --output-root /private/tmp/glioma-smoke --n-patients 2 --shape 12,12,12
-uv run --extra dev python -m glioma_recurrence --help
+uv run glioma-risk --help
 ```
 
 ## First Dataset
 
-Start with a de-identified pilot manifest and one case. Run `preprocess`, `make-labels`, `train`, `evaluate`, and `predict` in order. Review the generated QC HTML before trusting any metric.
+Run the README quickstart first. It creates a synthetic no-data smoke dataset and executes `preprocess`, `make-labels`, `train`, `evaluate`, and `predict` in order.
 
-If no real data is available, use the synthetic generator to exercise every stage. Synthetic outputs validate mechanics only and must not be used for scientific conclusions.
+For real data, start with a de-identified pilot manifest and one case. Review generated QC HTML before trusting any metric. Synthetic outputs validate mechanics only and must not be used for scientific conclusions.

@@ -253,6 +253,7 @@ dependencies = [
     { name = "numpy" },
     { name = "scikit-learn" },
     { name = "scipy" },
+    { name = "simpleitk" },
 ]
 
 [package.optional-dependencies]
@@ -273,6 +274,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "scikit-learn", specifier = ">=1.4" },
     { name = "scipy", specifier = ">=1.11" },
+    { name = "simpleitk", specifier = ">=2.3" },
     { name = "torch", marker = "extra == 'deep'", specifier = ">=2.2" },
 ]
 
@@ -1112,6 +1114,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/0d/1c/73e719955c59b8e424d015ab450f51c0af856ae46ea2da83eba51cc88de1/setuptools-81.0.0.tar.gz", hash = "sha256:487b53915f52501f0a79ccfd0c02c165ffe06631443a886740b91af4b7a5845a", size = 1198299 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/e3/c164c88b2e5ce7b24d667b9bd83589cf4f3520d97cad01534cd3c4f55fdb/setuptools-81.0.0-py3-none-any.whl", hash = "sha256:fdd925d5c5d9f62e4b74b30d6dd7828ce236fd6ed998a08d81de62ce5a6310d6", size = 1062021 },
+]
+
+[[package]]
+name = "simpleitk"
+version = "2.5.4"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/cd/8bb3ccc3f8428f99530d85dc39aabcdd6feb66d805cb7b33a0d643532df0/simpleitk-2.5.4-cp311-abi3-macosx_10_9_x86_64.whl", hash = "sha256:58f5018711adcefae9fa9aca784323b8125b01fa715e1dd1e565c5587bc73079", size = 42594233 },
+    { url = "https://files.pythonhosted.org/packages/fc/5e/1d85ed1373a9f6043eae33406f214a561f6b1724c4d293b56550a5243db3/simpleitk-2.5.4-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:38773eaba333c2f5ee8bf1073229c12c7af8391381a69667891d427e78bbc9d1", size = 38646455 },
+    { url = "https://files.pythonhosted.org/packages/0b/de/056c1fa2850418ff6f815e3ef1b006eda6a8f3461b3c68f046b1c0f5699c/simpleitk-2.5.4-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:ab2af59c93ee6304d6a85bbd8f33025b041db8b3c512553f6fad30461bf33c2a", size = 48114580 },
+    { url = "https://files.pythonhosted.org/packages/c3/5d/5e017f59bbc06af5b9c78331036478b2ddb371d7ff810c559c36e5389904/simpleitk-2.5.4-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4cbb85a6125c0248c774b6e202ca86128b82d5c60bec2a90d59f8a0e94df518c", size = 52844636 },
+    { url = "https://files.pythonhosted.org/packages/70/65/61dfcfc8d47f0a8849477a468b64dd2307042296f473bfd9d317eab76b02/simpleitk-2.5.4-cp311-abi3-win_amd64.whl", hash = "sha256:1fa8636047a4a5402cde792c30fe2629bd270b798f4d0ebaf999248543ca9262", size = 18944858 },
 ]
 
 [[package]]

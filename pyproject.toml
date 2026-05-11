@@ -16,6 +16,7 @@ dependencies = [
   "nibabel>=5.2",
   "scikit-learn>=1.4",
   "matplotlib>=3.8",
+  "simpleitk>=2.3",
 ]
 
 [project.optional-dependencies]
