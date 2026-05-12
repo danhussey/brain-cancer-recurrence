@@ -216,7 +216,7 @@ Each case directory stores:
 
 The README is intentionally command-first and plain-language. The glossary below defines common imaging, modeling, and clinical terms so collaborators can inspect the repository without already knowing the project vocabulary.
 
-The repository should not contain patient data, clinical spreadsheets, private credentials, or local derived outputs. Keep real datasets on external storage or institution-approved systems.
+The repository should not contain patient data, clinical spreadsheets, private credentials, or local derived outputs. Keep real datasets on external storage or institution-approved systems. If you do write working data inside the repo, note that `.gitignore` currently covers `derived/`, `models/`, and `reports/`, but not sibling directories such as `masks/`, `label_refs/`, or `observability/`.
 
 ## Development
 

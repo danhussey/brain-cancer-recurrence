@@ -38,4 +38,4 @@ The manifest is `patients.csv`. Required V1 prediction inputs are post-operative
 
 ## Safety Boundaries
 
-This is a retrospective research pipeline. It outputs voxelwise recurrence-risk heatmaps in baseline space and must not present dose recommendations or boost-region recommendations. The minimum input contract is post-op/pre-RT baseline T1c, baseline FLAIR, and baseline tumor mask. Follow-up scans and reviewed recurrence masks are only used to build labels and evaluate predictions.
+This is a retrospective research pipeline. It outputs voxelwise recurrence-risk heatmaps in baseline space and must not present dose recommendations or boost-region recommendations. The minimum input contract is post-operative, pre-radiotherapy baseline T1c, baseline FLAIR, and baseline tumor mask. Follow-up scans and reviewed recurrence masks are only used to build labels and evaluate predictions. Evaluation reports include calibration summaries, but the pipeline does not apply a separate calibration stage to model outputs.

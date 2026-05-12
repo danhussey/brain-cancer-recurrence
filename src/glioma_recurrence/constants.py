@@ -53,7 +53,7 @@ OPTIONAL_MANIFEST_COLUMNS = (
 ALLOWED_SPLITS = {"train", "validation", "val", "test", "holdout"}
 
 RESEARCH_ONLY_DISCLAIMER = (
-    "Research use only. This output is a calibrated recurrence-risk heatmap "
+    "Research use only. This output is a recurrence-risk heatmap "
     "in baseline space and is not a clinical dose recommendation."
 )
 
