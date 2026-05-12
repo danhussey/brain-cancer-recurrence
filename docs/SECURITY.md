@@ -4,12 +4,13 @@ This repository handles medical-imaging research data. Treat all real NIfTI imag
 
 ## Current Boundaries
 
-- Derived outputs are ignored by git through `derived/`, `models/`, and `reports/`.
 - The repository does not include real patient data.
+- `.gitignore` currently covers `derived/`, `models/`, and `reports/` at the repo root.
+- Dataset adapters and smoke-test tooling also write `masks/`, `label_refs/`, and `observability/`; those paths are not currently ignored by git.
 
 ## Required Practices
 
-- Do not commit NIfTI images, masks, model checkpoints trained on real patient data, or generated reports containing patient identifiers.
+- Do not commit NIfTI images, masks, label-reference images, observability artifacts, model checkpoints trained on real patient data, or generated reports containing patient identifiers.
 - Keep de-identification as a dataset-download/adaptation concern and verify it before sharing artifacts.
 - Use patient IDs from approved study manifests only.
 - Avoid network uploads of data unless covered by institutional approvals.

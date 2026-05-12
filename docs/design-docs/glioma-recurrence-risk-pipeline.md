@@ -2,7 +2,7 @@
 
 ## Scope
 
-Build a retrospective research pipeline that predicts future glioma recurrence locations from post-operative T1c and FLAIR MRI. The pipeline uses a baseline tumor mask as the tumor-location feature. The V1 output is a calibrated voxelwise recurrence-risk heatmap in baseline space.
+Build a retrospective research pipeline that predicts future glioma recurrence locations from post-operative T1c and FLAIR MRI. The pipeline uses a baseline tumor mask as the tumor-location feature. The V1 output is a voxelwise recurrence-risk heatmap in baseline space.
 
 The pipeline is not a clinical dose recommendation, treatment plan optimizer, or prospective decision-support system.
 
