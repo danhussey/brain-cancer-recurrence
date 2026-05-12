@@ -10,7 +10,15 @@ from pathlib import Path
 import numpy as np
 
 from .case import assert_case_geometry, load_case
-from .constants import BASELINE_FLAIR, BASELINE_T1C, BASELINE_TUMOR_MASK, BRAIN_MASK, RECURRENCE_RISK, case_dir
+from .constants import (
+    BASELINE_FLAIR,
+    BASELINE_T1C,
+    BASELINE_TUMOR_MASK,
+    BRAIN_MASK,
+    CASE_QC_SUMMARY_JSON,
+    RECURRENCE_RISK,
+    case_dir,
+)
 from .evaluation import evaluate_case, summarize_metrics, write_evaluation_report
 from .geometry import Volume
 from .labels import map_reviewed_mask_to_baseline
@@ -161,7 +169,7 @@ def cmd_preprocess(args: argparse.Namespace) -> int:
             write_volume(Volume(brain_mask, t1c.affine), output_dir / BRAIN_MASK, dtype=np.uint8)
             case = load_case(output_dir)
             qc_path = write_case_qc_report(case, output_dir=output_dir)
-            args.observer.artifact(qc_path, kind="qc_report", patient_id=record.patient_id)
+            observe_qc_artifacts(args, qc_path, record.patient_id)
             args.observer.event(
                 "case_preprocess_metrics",
                 patient_id=record.patient_id,
@@ -190,7 +198,7 @@ def cmd_make_labels(args: argparse.Namespace) -> int:
             args.observer.artifact(output, kind="recurrence_mask_on_baseline", patient_id=record.patient_id)
             case = load_case(case_dir(args.derived_root, record.patient_id), require_label=True)
             qc_path = write_case_qc_report(case, output_dir=output.parent)
-            args.observer.artifact(qc_path, kind="qc_report", patient_id=record.patient_id)
+            observe_qc_artifacts(args, qc_path, record.patient_id)
             args.observer.event(
                 "case_label_metrics",
                 patient_id=record.patient_id,
@@ -274,7 +282,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
                 write_volume(risk, prediction_path, dtype=np.float32)
                 args.observer.artifact(prediction_path, kind="prediction", patient_id=record.patient_id)
             qc_path = write_case_qc_report(case, output_dir=Path(args.derived_root) / record.patient_id, risk=risk)
-            args.observer.artifact(qc_path, kind="qc_report", patient_id=record.patient_id)
+            observe_qc_artifacts(args, qc_path, record.patient_id)
             case_metrics = evaluate_case(case, risk)
             metrics.append(case_metrics)
             args.observer.event("case_evaluation_metrics", **case_metrics.__dict__)
@@ -328,7 +336,7 @@ def cmd_predict(args: argparse.Namespace) -> int:
         write_volume(risk, prediction_path, dtype=np.float32)
         qc_path = write_case_qc_report(case, output_dir=output_dir, risk=risk)
         args.observer.artifact(prediction_path, kind="prediction", patient_id=case.patient_id)
-        args.observer.artifact(qc_path, kind="qc_report", patient_id=case.patient_id)
+        observe_qc_artifacts(args, qc_path, case.patient_id)
         args.observer.event(
             "prediction_summary",
             patient_id=case.patient_id,
@@ -339,6 +347,13 @@ def cmd_predict(args: argparse.Namespace) -> int:
         )
     print(f"wrote prediction: {prediction_path}")
     return 0
+
+
+def observe_qc_artifacts(args: argparse.Namespace, qc_path: Path, patient_id: str) -> None:
+    args.observer.artifact(qc_path, kind="qc_report", patient_id=patient_id)
+    summary_path = qc_path.parent / CASE_QC_SUMMARY_JSON
+    if summary_path.exists():
+        args.observer.artifact(summary_path, kind="qc_summary", patient_id=patient_id)
 
 
 def _load_training_case(record: PatientRecord, derived_root: str | Path):

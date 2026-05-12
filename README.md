@@ -27,7 +27,7 @@ uv run glioma-risk evaluate --manifest /tmp/glioma-smoke/patients.csv --derived-
 uv run glioma-risk predict --case-dir /tmp/glioma-smoke/derived/SYN002 --model-path /tmp/glioma-smoke/models/tumor-distance.json --output-dir /tmp/glioma-smoke/derived/SYN002
 ```
 
-Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to inspect the overlay report. The synthetic data is only for checking that the software works; it is not scientifically meaningful.
+Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to inspect the overlay report. The report includes representative slice tabs and opacity controls for baseline tumor, recurrence, and risk overlays. A machine-readable QC summary is written beside it as `qc_summary.json`. The synthetic data is only for checking that the software works; it is not scientifically meaningful.
 
 ## What It Does
 
@@ -209,6 +209,7 @@ Each case directory stores:
 - `brain_mask.nii.gz`
 - `recurrence_risk.nii.gz`
 - `qc_overlay.html`
+- `qc_summary.json`
 
 ## Accessibility
 

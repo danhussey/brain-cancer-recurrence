@@ -11,6 +11,7 @@ RECURRENCE_MASK_ON_BASELINE = "recurrence_mask_on_baseline.nii.gz"
 BRAIN_MASK = "brain_mask.nii.gz"
 RECURRENCE_RISK = "recurrence_risk.nii.gz"
 CASE_QC_HTML = "qc_overlay.html"
+CASE_QC_SUMMARY_JSON = "qc_summary.json"
 
 DERIVED_FILENAMES = (
     BASELINE_T1C,

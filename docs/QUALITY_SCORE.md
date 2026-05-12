@@ -6,7 +6,7 @@
 | Geometry and resampling | B | Affine validation and synthetic round-trip tests exist. Needs registration QA fixtures. |
 | Baseline models | B | Tumor-distance and voxel-logistic MRI baselines exist with synthetic smoke tests. |
 | Deep learning path | C | Optional MONAI U-Net trainer exists. Needs integration tests with `deep` extra and real patch sampling checks. |
-| Reporting | C | Mandatory static QC panels exist. Needs richer overlays and visual regression checks. |
+| Reporting | B | Static QC reports now include representative slice tabs, T1c/FLAIR overlay stacks, opacity controls, and `qc_summary.json`. Needs visual regression checks and formal sign-off workflow. |
 | Observability | B | CLI stages emit JSONL events and summaries with artifacts, timings, and metrics. Needs dashboards once real runs exist. |
 | Synthetic smoke harness | B | Deterministic generator and pipeline smoke test exist. Needs CI wiring. |
 | UCSD-PTGBM adapter | B | Longitudinal MRI+mask pairing is tested with fake workbook data. Needs validation on the real downloaded layout. |
