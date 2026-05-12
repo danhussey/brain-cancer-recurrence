@@ -12,7 +12,7 @@ Build a retrospective research pipeline that predicts future glioma recurrence l
 - Outputs: baseline-space NIfTI derivatives and `recurrence_risk.nii.gz`; future clinical-system handoff should export DICOM SEG or Parametric Map after the research output contract is stable.
 - Data-readiness tooling: read-only DICOM header audit for sequence availability, scanner metadata, and PHI-risk fields.
 - Models: tumor-distance baseline, voxel-sampled MRI logistic baseline, optional MONAI/PyTorch U-Net.
-- Evaluation: voxel AUPRC, Brier score, Dice at fixed predicted volumes, recurrence coverage by top-risk volume, calibration, and baseline comparison.
+- Evaluation: voxel AUPRC, Brier score, Dice at fixed predicted volumes, recurrence coverage by top-risk volume, calibration, baseline comparison, and recurrence stratification inside versus outside the baseline tumor footprint.
 - Target scale: about 100-150 development patients and a similarly sized validation cohort, with scanner upgrades and a second institution treated as robustness tests.
 - Label strategy: use curated recurrence outcomes with pseudoprogression excluded; explore both weak recurrence/no-recurrence supervision and auto-segmentation plus expert review for spatial labels.
 
@@ -24,3 +24,4 @@ Build a retrospective research pipeline that predicts future glioma recurrence l
 - Prospective clinical decision support.
 - Feeding follow-up imaging into prediction-time inputs.
 - Treating expert-drawn manual contours as the only acceptable spatial-label source.
+- Treating high risk at obvious residual tumor as sufficient evidence that the model can improve future treatment targeting.

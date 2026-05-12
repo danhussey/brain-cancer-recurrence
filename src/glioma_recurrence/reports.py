@@ -12,6 +12,21 @@ from .case import CaseData
 from .constants import CASE_QC_HTML, CASE_QC_SUMMARY_JSON, RESEARCH_ONLY_DISCLAIMER
 from .geometry import Volume
 
+MAX_BROWSER_SLICES = 64
+
+SUMMARY_FIELD_HELP = {
+    "Shape": "Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions.",
+    "Spacing mm": "Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale.",
+    "Brain voxels": "Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy.",
+    "Baseline tumor voxels": "Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region.",
+    "Recurrence mask present": "Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible.",
+    "Recurrence voxels": "Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance.",
+    "Recurrence inside baseline tumor": "Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases.",
+    "Recurrence outside baseline tumor": "Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review.",
+    "Risk map present": "Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC.",
+    "Viewer slices": "Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here.",
+}
+
 
 def write_case_qc_report(
     case: CaseData,
@@ -34,17 +49,31 @@ def write_case_qc_report(
         if case.recurrence_mask is not None
         else np.zeros(case.t1c.shape, dtype=np.float32)
     )
-    slices = select_representative_slices(
+    selected_slices = select_representative_slices(
         shape=case.t1c.shape,
         baseline_tumor=case.baseline_tumor_mask.data,
         recurrence=recurrence_data,
         risk=risk_data,
     )
-    summary = build_qc_summary(case, risk=risk, recurrence_data=recurrence_data, risk_data=risk_data, slices=slices)
+    viewer_slices = select_viewer_slices(shape=case.t1c.shape, selected_slices=selected_slices)
+    summary = build_qc_summary(
+        case,
+        risk=risk,
+        recurrence_data=recurrence_data,
+        risk_data=risk_data,
+        selected_slices=selected_slices,
+        viewer_slices=viewer_slices,
+    )
     summary_path = target_dir / CASE_QC_SUMMARY_JSON
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
 
-    image_assets = _write_overlay_assets(target_dir, case, recurrence_data=recurrence_data, risk_data=risk_data, slices=slices)
+    image_assets = _write_overlay_assets(
+        target_dir,
+        case,
+        recurrence_data=recurrence_data,
+        risk_data=risk_data,
+        slices=viewer_slices,
+    )
     if image_assets:
         report_body = _interactive_report_body(summary, image_assets)
     else:
@@ -62,7 +91,7 @@ def write_case_qc_report(
 <main>
 {report_body}
 </main>
-{_report_javascript() if image_assets else ""}
+{_report_javascript(image_assets) if image_assets else ""}
 </body>
 </html>
 """
@@ -77,9 +106,17 @@ def build_qc_summary(
     risk: Volume | None,
     recurrence_data: np.ndarray,
     risk_data: np.ndarray,
-    slices: list[dict[str, object]],
+    selected_slices: list[dict[str, object]],
+    viewer_slices: list[dict[str, object]],
 ) -> dict[str, object]:
     brain = case.brain_mask.data.astype(bool)
+    baseline_tumor = case.baseline_tumor_mask.data.astype(bool)
+    recurrence_location = recurrence_location_stats(
+        recurrence_data,
+        baseline_tumor=baseline_tumor,
+        brain=brain,
+        recurrence_present=case.recurrence_mask is not None,
+    )
     return {
         "patient_id": case.patient_id,
         "research_only": RESEARCH_ONLY_DISCLAIMER,
@@ -89,11 +126,37 @@ def build_qc_summary(
         "baseline_tumor_voxels": int(np.count_nonzero(case.baseline_tumor_mask.data)),
         "recurrence_mask_present": case.recurrence_mask is not None,
         "recurrence_voxels": int(np.count_nonzero(recurrence_data)) if case.recurrence_mask is not None else None,
+        "recurrence_location": recurrence_location,
         "risk_present": risk is not None,
         "risk_stats": volume_stats(risk_data, mask=brain) if risk is not None else None,
         "t1c_stats": volume_stats(case.t1c.data, mask=brain),
         "flair_stats": volume_stats(case.flair.data, mask=brain),
-        "selected_slices": slices,
+        "selected_slices": selected_slices,
+        "viewer_slices": viewer_slices,
+        "viewer_slice_count": len(viewer_slices),
+    }
+
+
+def recurrence_location_stats(
+    recurrence_data: np.ndarray,
+    *,
+    baseline_tumor: np.ndarray,
+    brain: np.ndarray,
+    recurrence_present: bool,
+) -> dict[str, float | int] | None:
+    if not recurrence_present:
+        return None
+    recurrence = np.asarray(recurrence_data) > 0
+    baseline = np.asarray(baseline_tumor, dtype=bool)
+    brain_mask = np.asarray(brain, dtype=bool)
+    recurrence_voxels = int(np.count_nonzero(recurrence))
+    inside = int(np.count_nonzero(recurrence & baseline))
+    outside = int(np.count_nonzero(recurrence & brain_mask & ~baseline))
+    outside_fraction = 0.0 if recurrence_voxels == 0 else outside / recurrence_voxels
+    return {
+        "inside_baseline_tumor_voxels": inside,
+        "outside_baseline_tumor_voxels": outside,
+        "outside_baseline_tumor_fraction": round(float(outside_fraction), 6),
     }
 
 
@@ -141,6 +204,45 @@ def select_representative_slices(
         if len(slices) >= 4:
             break
     return slices
+
+
+def select_viewer_slices(
+    *,
+    shape: tuple[int, int, int],
+    selected_slices: list[dict[str, object]],
+    max_slices: int = MAX_BROWSER_SLICES,
+) -> list[dict[str, object]]:
+    """Select axial slices for the static browser without exploding report size."""
+
+    z_count = int(shape[2])
+    if z_count <= 0:
+        return []
+
+    selected_by_index: dict[int, str] = {}
+    for item in selected_slices:
+        try:
+            index = int(item["index"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if 0 <= index < z_count:
+            selected_by_index[index] = str(item.get("reason", "selected slice"))
+
+    if z_count <= max_slices:
+        indices = list(range(z_count))
+        default_reason = "all axial slices"
+    else:
+        reserved = max(1, max_slices - len(selected_by_index))
+        sampled = np.linspace(0, z_count - 1, num=reserved, dtype=int).tolist()
+        indices = sorted(set(sampled).union(selected_by_index))
+        default_reason = "sampled axial slice"
+
+    return [
+        {
+            "index": int(index),
+            "reason": selected_by_index.get(index, default_reason),
+        }
+        for index in indices
+    ]
 
 
 def best_slice_index(data: np.ndarray) -> int | None:
@@ -237,9 +339,10 @@ def risk_overlay_rgba(data: np.ndarray) -> np.ndarray:
 
 def _interactive_report_body(summary: dict[str, object], assets: list[dict[str, object]]) -> str:
     patient_id = str(summary["patient_id"])
-    buttons = "\n".join(_slice_button(asset, active=offset == 0) for offset, asset in enumerate(assets))
-    slice_sections = "\n".join(_slice_section(asset, active=offset == 0) for offset, asset in enumerate(assets))
+    initial_asset = assets[0]
+    quick_jumps = _slice_jump_buttons(summary, assets)
     summary_table = _summary_table(summary)
+    assets_json = _json_script_payload(assets)
     return f"""
 <header>
   <p class="eyebrow">Research QC Overlay</p>
@@ -259,20 +362,49 @@ def _interactive_report_body(summary: dict[str, object], assets: list[dict[str, 
   </div>
 </section>
 <section aria-labelledby="slice-heading">
-  <h2 id="slice-heading">Representative Slices</h2>
-  <nav class="slice-tabs" aria-label="Representative slices">
-    {buttons}
-  </nav>
-  {slice_sections}
+  <h2 id="slice-heading">Axial Slice Browser</h2>
+  <div class="slice-browser">
+    <div class="slice-controls">
+      <label for="slice-slider">Slice <output id="slice-label">z={int(initial_asset["index"])}: {html.escape(str(initial_asset["reason"]))}</output></label>
+      <input id="slice-slider" type="range" min="0" max="{len(assets) - 1}" step="1" value="0" data-slice-slider>
+      <nav class="slice-jumps" aria-label="Representative slice jumps">
+        {quick_jumps}
+      </nav>
+    </div>
+    <div class="viewer-grid">
+      {_viewer_stack("T1c", "t1c", initial_asset)}
+      {_viewer_stack("FLAIR", "flair", initial_asset)}
+    </div>
+  </div>
+  <script type="application/json" id="qc-slice-assets">{assets_json}</script>
 </section>
 """
 
 
-def _slice_button(asset: dict[str, object], *, active: bool) -> str:
-    index = int(asset["index"])
-    class_attr = ' class="active"' if active else ""
-    reason = html.escape(str(asset["reason"]))
-    return f'<button type="button" data-slice-tab="{index}"{class_attr}>z={index} <span>{reason}</span></button>'
+def _slice_jump_buttons(summary: dict[str, object], assets: list[dict[str, object]]) -> str:
+    offset_by_index = {int(asset["index"]): offset for offset, asset in enumerate(assets)}
+    buttons: list[str] = []
+    seen: set[int] = set()
+    for item in summary.get("selected_slices", []):
+        if not isinstance(item, dict):
+            continue
+        try:
+            index = int(item["index"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if index in seen or index not in offset_by_index:
+            continue
+        seen.add(index)
+        reason = html.escape(str(item.get("reason", "selected slice")))
+        buttons.append(
+            f'<button type="button" data-slice-jump="{offset_by_index[index]}">'
+            f'z={index} <span>{reason}</span></button>'
+        )
+    return "\n".join(buttons)
+
+
+def _json_script_payload(value: object) -> str:
+    return json.dumps(value).replace("</", "<\\/")
 
 
 def _range_control(key: str, label: str, value: str) -> str:
@@ -283,36 +415,32 @@ def _range_control(key: str, label: str, value: str) -> str:
     )
 
 
-def _slice_section(asset: dict[str, object], *, active: bool) -> str:
-    index = int(asset["index"])
-    classes = "slice-view active" if active else "slice-view"
-    return f"""
-  <article class="{classes}" data-slice-view="{index}">
-    <h3>Slice z={index}: {html.escape(str(asset["reason"]))}</h3>
-    <div class="viewer-grid">
-      {_viewer_stack("T1c", str(asset["t1c"]), asset)}
-      {_viewer_stack("FLAIR", str(asset["flair"]), asset)}
-    </div>
-  </article>
-"""
-
-
-def _viewer_stack(label: str, base_file: str, asset: dict[str, object]) -> str:
+def _viewer_stack(label: str, base_key: str, asset: dict[str, object]) -> str:
     escaped_label = html.escape(label)
     return f"""
 <figure>
   <figcaption>{escaped_label} with overlays</figcaption>
   <div class="image-stack">
-    <img src="{html.escape(base_file)}" alt="{escaped_label} anatomy slice">
-    <img src="{html.escape(str(asset["tumor"]))}" alt="Baseline tumor overlay" class="overlay" data-overlay="tumor">
-    <img src="{html.escape(str(asset["recurrence"]))}" alt="Recurrence mask overlay" class="overlay" data-overlay="recurrence">
-    <img src="{html.escape(str(asset["risk"]))}" alt="Risk heatmap overlay" class="overlay" data-overlay="risk">
+    <img src="{html.escape(str(asset[base_key]))}" alt="{escaped_label} anatomy slice" data-image-channel="{html.escape(base_key)}">
+    <img src="{html.escape(str(asset["tumor"]))}" alt="Baseline tumor overlay" class="overlay" data-image-channel="tumor" data-overlay="tumor">
+    <img src="{html.escape(str(asset["recurrence"]))}" alt="Recurrence mask overlay" class="overlay" data-image-channel="recurrence" data-overlay="recurrence">
+    <img src="{html.escape(str(asset["risk"]))}" alt="Risk heatmap overlay" class="overlay" data-image-channel="risk" data-overlay="risk">
   </div>
 </figure>
 """
 
 
 def _summary_table(summary: dict[str, object]) -> str:
+    recurrence_location = summary.get("recurrence_location")
+    if isinstance(recurrence_location, dict):
+        recurrence_inside = str(recurrence_location["inside_baseline_tumor_voxels"])
+        recurrence_outside = (
+            f'{recurrence_location["outside_baseline_tumor_voxels"]} '
+            f'({recurrence_location["outside_baseline_tumor_fraction"]:.2%})'
+        )
+    else:
+        recurrence_inside = "not available"
+        recurrence_outside = "not available"
     rows = [
         ("Shape", " x ".join(str(value) for value in summary["shape"])),
         ("Spacing mm", " / ".join(str(value) for value in summary["spacing_mm"])),
@@ -320,13 +448,29 @@ def _summary_table(summary: dict[str, object]) -> str:
         ("Baseline tumor voxels", str(summary["baseline_tumor_voxels"])),
         ("Recurrence mask present", str(summary["recurrence_mask_present"])),
         ("Recurrence voxels", "not available" if summary["recurrence_voxels"] is None else str(summary["recurrence_voxels"])),
+        ("Recurrence inside baseline tumor", recurrence_inside),
+        ("Recurrence outside baseline tumor", recurrence_outside),
         ("Risk map present", str(summary["risk_present"])),
+        ("Viewer slices", str(summary["viewer_slice_count"])),
     ]
     body = "\n".join(
-        f"<tr><th scope=\"row\">{html.escape(label)}</th><td>{html.escape(value)}</td></tr>"
+        f"<tr><th scope=\"row\">{_summary_label(label)}</th><td>{html.escape(value)}</td></tr>"
         for label, value in rows
     )
     return f"<table>{body}</table>"
+
+
+def _summary_label(label: str) -> str:
+    help_text = SUMMARY_FIELD_HELP.get(label)
+    escaped_label = html.escape(label)
+    if help_text is None:
+        return escaped_label
+    escaped_help = html.escape(help_text)
+    return (
+        f'<span class="summary-label-text">{escaped_label}</span>'
+        f'<span class="summary-help" tabindex="0" role="img" '
+        f'aria-label="{escaped_help}" data-tooltip="{escaped_help}">i</span>'
+    )
 
 
 def _summary_only_report_body(summary: dict[str, object]) -> str:
@@ -362,14 +506,55 @@ h3 { margin: 0 0 12px; font-size: 16px; }
 table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; font-size: 14px; }
 th { width: 220px; color: #333; }
+.summary-label-text { margin-right: 6px; }
+.summary-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #777;
+  border-radius: 50%;
+  color: #333;
+  background: #f7f7f5;
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+}
+.summary-help::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  z-index: 20;
+  width: min(300px, calc(100vw - 56px));
+  padding: 8px 10px;
+  border: 1px solid #333;
+  background: #fff;
+  color: #111;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+}
+.summary-help:hover::after,
+.summary-help:focus::after { opacity: 1; }
+.summary-help:focus { outline: 2px solid #1a73e8; outline-offset: 2px; }
 .controls { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px; background: #fff; border: 1px solid #ddd; }
 .controls label { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-.slice-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.slice-tabs button { border: 1px solid #aaa; background: #fff; padding: 8px 10px; cursor: pointer; }
-.slice-tabs button.active { border-color: #111; background: #111; color: #fff; }
-.slice-tabs span { display: block; font-size: 11px; opacity: 0.78; }
-.slice-view { display: none; }
-.slice-view.active { display: block; }
+.slice-browser { background: #fff; border: 1px solid #ddd; padding: 12px; }
+.slice-controls { display: grid; gap: 10px; margin-bottom: 14px; }
+.slice-controls label { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
+.slice-controls input[type="range"] { width: 100%; }
+.slice-jumps { display: flex; flex-wrap: wrap; gap: 8px; }
+.slice-jumps button { border: 1px solid #aaa; background: #fff; padding: 8px 10px; cursor: pointer; }
+.slice-jumps button.active { border-color: #111; background: #111; color: #fff; }
+.slice-jumps span { display: block; font-size: 11px; opacity: 0.78; }
 .viewer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 figure { margin: 0; background: #fff; border: 1px solid #ddd; padding: 10px; }
 figcaption { margin-bottom: 8px; font-weight: 600; }
@@ -380,9 +565,11 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 """
 
 
-def _report_javascript() -> str:
+def _report_javascript(assets: list[dict[str, object]]) -> str:
     return """
 <script>
+const sliceAssets = JSON.parse(document.getElementById('qc-slice-assets').textContent);
+
 for (const input of document.querySelectorAll('[data-opacity-control]')) {
   const key = input.dataset.opacityControl;
   const apply = () => {
@@ -393,16 +580,39 @@ for (const input of document.querySelectorAll('[data-opacity-control]')) {
   input.addEventListener('input', apply);
   apply();
 }
-for (const button of document.querySelectorAll('[data-slice-tab]')) {
+
+function setSlice(offset) {
+  const bounded = Math.max(0, Math.min(sliceAssets.length - 1, offset));
+  const asset = sliceAssets[bounded];
+  const slider = document.querySelector('[data-slice-slider]');
+  const label = document.getElementById('slice-label');
+  if (slider) {
+    slider.value = String(bounded);
+  }
+  if (label) {
+    label.value = `z=${asset.index}: ${asset.reason}`;
+    label.textContent = `z=${asset.index}: ${asset.reason}`;
+  }
+  for (const image of document.querySelectorAll('[data-image-channel]')) {
+    const channel = image.dataset.imageChannel;
+    if (asset[channel]) {
+      image.src = asset[channel];
+    }
+  }
+  for (const button of document.querySelectorAll('[data-slice-jump]')) {
+    button.classList.toggle('active', Number(button.dataset.sliceJump) === bounded);
+  }
+}
+
+const slider = document.querySelector('[data-slice-slider]');
+if (slider) {
+  slider.addEventListener('input', () => setSlice(Number(slider.value)));
+}
+for (const button of document.querySelectorAll('[data-slice-jump]')) {
   button.addEventListener('click', () => {
-    const selected = button.dataset.sliceTab;
-    for (const tab of document.querySelectorAll('[data-slice-tab]')) {
-      tab.classList.toggle('active', tab === button);
-    }
-    for (const view of document.querySelectorAll('[data-slice-view]')) {
-      view.classList.toggle('active', view.dataset.sliceView === selected);
-    }
+    setSlice(Number(button.dataset.sliceJump));
   });
 }
+setSlice(0);
 </script>
 """

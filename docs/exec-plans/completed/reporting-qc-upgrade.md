@@ -11,8 +11,11 @@ Upgrade case-level QC reports from separate static panels into a reviewable file
 ## Changes
 
 - Added representative slice selection from midline, baseline tumor peak, recurrence peak, and risk peak.
+- Added an axial slice browser with quick jumps to representative slices.
 - Added T1c and FLAIR viewer stacks with transparent baseline tumor, recurrence, and risk overlays.
+- Added recurrence-inside/outside-baseline-tumor summary fields to make obvious residual-tumor recurrence visible.
 - Added browser opacity sliders for each overlay type.
+- Added concise case-summary tooltips for reviewer interpretation.
 - Added `qc_summary.json` beside each `qc_overlay.html`.
 - Added observability artifacts for QC summaries.
 - Added focused report tests and smoke-test coverage for summary output.

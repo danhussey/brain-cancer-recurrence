@@ -8,7 +8,7 @@ import numpy as np
 from glioma_recurrence.case import CaseData
 from glioma_recurrence.constants import CASE_QC_HTML, CASE_QC_SUMMARY_JSON, RESEARCH_ONLY_DISCLAIMER
 from glioma_recurrence.geometry import Volume
-from glioma_recurrence.reports import select_representative_slices, write_case_qc_report
+from glioma_recurrence.reports import select_representative_slices, select_viewer_slices, write_case_qc_report
 
 
 def make_case(*, with_recurrence: bool = True) -> tuple[CaseData, Volume]:
@@ -49,26 +49,36 @@ def test_case_qc_report_writes_interactive_overlay_assets_and_summary(tmp_path: 
     assert 'data-opacity-control="tumor"' in report
     assert 'data-opacity-control="recurrence"' in report
     assert 'data-opacity-control="risk"' in report
-    assert "Representative Slices" in report
+    assert "Axial Slice Browser" in report
+    assert 'data-slice-slider' in report
+    assert 'data-slice-jump' in report
+    assert 'class="summary-help"' in report
+    assert "Useful for marginal or distant recurrence review." in report
     assert "T1c with overlays" in report
     assert "FLAIR with overlays" in report
     assert RESEARCH_ONLY_DISCLAIMER in report
     assert summary["patient_id"] == "CASE001"
     assert summary["recurrence_mask_present"] is True
     assert summary["recurrence_voxels"] == 16
+    assert summary["recurrence_location"] == {
+        "inside_baseline_tumor_voxels": 0,
+        "outside_baseline_tumor_voxels": 16,
+        "outside_baseline_tumor_fraction": 1.0,
+    }
     assert summary["risk_present"] is True
     assert summary["risk_stats"]["max"] == 0.9
+    assert summary["viewer_slice_count"] == 8
     assert {item["reason"] for item in summary["selected_slices"]} >= {
         "midline",
         "baseline tumor peak",
         "recurrence peak",
         "risk peak",
     }
-    assert list(tmp_path.glob("qc_z*_t1c.png"))
-    assert list(tmp_path.glob("qc_z*_flair.png"))
-    assert list(tmp_path.glob("qc_z*_tumor.png"))
-    assert list(tmp_path.glob("qc_z*_recurrence.png"))
-    assert list(tmp_path.glob("qc_z*_risk.png"))
+    assert len(list(tmp_path.glob("qc_z*_t1c.png"))) == 8
+    assert len(list(tmp_path.glob("qc_z*_flair.png"))) == 8
+    assert len(list(tmp_path.glob("qc_z*_tumor.png"))) == 8
+    assert len(list(tmp_path.glob("qc_z*_recurrence.png"))) == 8
+    assert len(list(tmp_path.glob("qc_z*_risk.png"))) == 8
 
 
 def test_case_qc_report_handles_prediction_without_recurrence_label(tmp_path: Path):
@@ -82,6 +92,7 @@ def test_case_qc_report_handles_prediction_without_recurrence_label(tmp_path: Pa
     assert "not available" in report
     assert summary["recurrence_mask_present"] is False
     assert summary["recurrence_voxels"] is None
+    assert summary["recurrence_location"] is None
     assert summary["risk_present"] is True
 
 
@@ -101,3 +112,19 @@ def test_representative_slice_selection_is_deterministic_and_unique():
         {"index": 1, "reason": "baseline tumor peak"},
         {"index": 7, "reason": "risk peak"},
     ]
+
+
+def test_viewer_slice_selection_samples_large_volumes_and_keeps_key_slices():
+    selected = [
+        {"index": 3, "reason": "baseline tumor peak"},
+        {"index": 98, "reason": "risk peak"},
+    ]
+
+    slices = select_viewer_slices(shape=(16, 16, 100), selected_slices=selected, max_slices=10)
+
+    assert len(slices) <= 10
+    assert slices[0]["index"] == 0
+    assert slices[-1]["index"] == 99
+    by_index = {item["index"]: item["reason"] for item in slices}
+    assert by_index[3] == "baseline tumor peak"
+    assert by_index[98] == "risk peak"

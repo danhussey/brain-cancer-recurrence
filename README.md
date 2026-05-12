@@ -27,7 +27,7 @@ uv run glioma-risk evaluate --manifest /tmp/glioma-smoke/patients.csv --derived-
 uv run glioma-risk predict --case-dir /tmp/glioma-smoke/derived/SYN002 --model-path /tmp/glioma-smoke/models/tumor-distance.json --output-dir /tmp/glioma-smoke/derived/SYN002
 ```
 
-Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to inspect the overlay report. The report includes representative slice tabs and opacity controls for baseline tumor, recurrence, and risk overlays. A machine-readable QC summary is written beside it as `qc_summary.json`. The synthetic data is only for checking that the software works; it is not scientifically meaningful.
+Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to inspect the overlay report. The report includes an axial slice browser, quick jumps to representative slices, case-summary tooltips, and opacity controls for baseline tumor, recurrence, and risk overlays. A machine-readable QC summary is written beside it as `qc_summary.json`. The synthetic data is only for checking that the software works; it is not scientifically meaningful.
 
 ## What It Does
 
@@ -90,6 +90,7 @@ Model options:
 - Preferred MRI channels: T1, T1c, T2, and FLAIR, especially for BraTS-style segmentation pipelines.
 - Source data: clinical DICOM. Internal research format: NIfTI.
 - Labels: clinician-curated recurrence endpoint with pseudoprogression excluded. Spatial labels should come from auto-segmentation plus expert review when available.
+- Recurrence interpretation: residual tumor at baseline is expected to be high risk. Scientific and treatment-planning value depends on separately measuring recurrence inside the baseline tumor footprint and marginal/distant recurrence outside it.
 - Cohort target: about 100-150 development patients and a similarly sized validation cohort.
 - Robustness target: scanner upgrades and a second institution should be tracked explicitly. Foundation models are a candidate path for scanner/protocol robustness after simple baselines.
 

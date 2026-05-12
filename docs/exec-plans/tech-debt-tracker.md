@@ -6,7 +6,7 @@ Track known debt as small, agent-actionable items.
 | --- | --- | --- | --- |
 | TD-001 | UCSD fixtures | Add real-layout UCSD metadata and file-name fixtures for adapter regression tests. | Open |
 | TD-002 | Registration | Replace V1 resampling-only preprocessing with explicit registration transform records. | Open |
-| TD-003 | Reports | Add overlay opacity controls and visual regression checks for QC HTML. Opacity controls are done; visual regression remains. | Partial |
+| TD-003 | Reports | Add slice browsing, overlay opacity controls, and visual regression checks for QC HTML. Slice browsing and opacity controls are done; visual regression remains. | Partial |
 | TD-004 | Deep learning | Add `deep` extra integration smoke test behind an optional marker. | Open |
 | TD-005 | External validation | Add RHUH-GBM adapter or documented external-validation workflow. | Open |
 | TD-006 | UCSD clinical metadata | Locate and ingest UCSD clinical table so filename-inferred labels can be replaced with adjudicated recurrence labels. | Done |
