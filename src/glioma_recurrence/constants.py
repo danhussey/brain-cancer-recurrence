@@ -11,6 +11,7 @@ RECURRENCE_MASK_ON_BASELINE = "recurrence_mask_on_baseline.nii.gz"
 BRAIN_MASK = "brain_mask.nii.gz"
 RECURRENCE_RISK = "recurrence_risk.nii.gz"
 CASE_QC_HTML = "qc_overlay.html"
+CASE_QC_SUMMARY_JSON = "qc_summary.json"
 
 DERIVED_FILENAMES = (
     BASELINE_T1C,
@@ -38,6 +39,15 @@ OPTIONAL_MANIFEST_COLUMNS = (
     "baseline_timepoint_id",
     "recurrence_timepoint_id",
     "radiotherapy_end_date",
+    "baseline_study_instance_uid",
+    "baseline_t1_series_uid",
+    "baseline_t2_series_uid",
+    "input_format",
+    "institution_id",
+    "scanner_manufacturer",
+    "scanner_model",
+    "magnetic_field_strength",
+    "label_source",
 )
 
 ALLOWED_SPLITS = {"train", "validation", "val", "test", "holdout"}

@@ -5,6 +5,8 @@ Durable lab-notebook style notes for findings, surprises, project wisdom, and in
 ## Entries
 
 - [2026-05-11: UCSD Cohort Accounting, Label Semantics, And Data Strategy](2026-05-11-ucsd-cohort-and-labels.md)
+- [2026-05-12: Clinical Study Requirements](2026-05-12-clinical-study-requirements.md)
+- [2026-05-12: Residual Tumor Versus Actionable Recurrence](2026-05-12-residual-vs-actionable-recurrence.md)
 
 ## What Belongs Here
 

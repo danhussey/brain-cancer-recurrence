@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from glioma_recurrence.cli import main as cli_main
+from glioma_recurrence.constants import CASE_QC_SUMMARY_JSON
 
 
 def load_generator():
@@ -110,6 +111,7 @@ def test_synthetic_dataset_runs_end_to_end_mri_only_pipeline(tmp_path: Path):
     assert report["baseline_comparison"]["baseline_model"] == "tumor-distance"
     assert (validation_case / "recurrence_risk.nii.gz").exists()
     assert (validation_case / "qc_overlay.html").exists()
+    assert (validation_case / CASE_QC_SUMMARY_JSON).exists()
 
 
 def test_tumor_distance_is_default_train_model(tmp_path: Path):

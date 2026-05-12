@@ -10,7 +10,15 @@ from pathlib import Path
 import numpy as np
 
 from .case import assert_case_geometry, load_case
-from .constants import BASELINE_FLAIR, BASELINE_T1C, BASELINE_TUMOR_MASK, BRAIN_MASK, RECURRENCE_RISK, case_dir
+from .constants import (
+    BASELINE_FLAIR,
+    BASELINE_T1C,
+    BASELINE_TUMOR_MASK,
+    BRAIN_MASK,
+    CASE_QC_SUMMARY_JSON,
+    RECURRENCE_RISK,
+    case_dir,
+)
 from .evaluation import evaluate_case, summarize_metrics, write_evaluation_report
 from .geometry import Volume
 from .labels import map_reviewed_mask_to_baseline
@@ -41,6 +49,28 @@ def main(argv: list[str] | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="glioma-risk")
     subparsers = parser.add_subparsers(required=True)
+
+    dicom_audit = subparsers.add_parser("dicom-audit", help="Read DICOM headers and summarize MRI sequence availability")
+    dicom_audit.add_argument("--dicom-root", required=True, help="Root directory containing clinical DICOM exports")
+    dicom_audit.add_argument("--output", required=True, help="Series-level CSV inventory path")
+    dicom_audit.add_argument("--summary-output", required=True, help="Strict JSON summary path")
+    dicom_audit.add_argument(
+        "--include-patient-id",
+        action="store_true",
+        help="Write raw PatientID values to the CSV/JSON instead of stable hashed patient keys",
+    )
+    dicom_audit.add_argument(
+        "--include-paths",
+        action="store_true",
+        help="Write relative example file paths to the CSV. Off by default because folder names may contain identifiers.",
+    )
+    dicom_audit.add_argument(
+        "--patient-id-salt",
+        default="glioma-recurrence-risk",
+        help="Salt used when hashing PatientID values for local pseudonymous audit keys",
+    )
+    add_observability_args(dicom_audit)
+    dicom_audit.set_defaults(func=cmd_dicom_audit, stage="dicom-audit")
 
     preprocess = subparsers.add_parser("preprocess", help="Resample baseline MRI/mask to T1c and normalize MRI")
     add_manifest_args(preprocess)
@@ -95,6 +125,25 @@ def add_manifest_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--derived-root", required=True)
 
 
+def cmd_dicom_audit(args: argparse.Namespace) -> int:
+    from .dicom import audit_dicom_tree
+
+    summary = audit_dicom_tree(
+        args.dicom_root,
+        output_csv=args.output,
+        summary_json=args.summary_output,
+        include_patient_id=args.include_patient_id,
+        include_paths=args.include_paths,
+        patient_id_salt=args.patient_id_salt,
+    )
+    args.observer.event("dicom_audit_summary", **summary)
+    args.observer.artifact(args.output, kind="dicom_series_inventory")
+    args.observer.artifact(args.summary_output, kind="dicom_audit_summary")
+    print(f"wrote DICOM series inventory: {args.output}")
+    print(f"wrote DICOM audit summary: {args.summary_output}")
+    return 0
+
+
 def cmd_preprocess(args: argparse.Namespace) -> int:
     records = read_manifest(args.manifest)
     args.observer.event("manifest_loaded", manifest=args.manifest, n_records=len(records))
@@ -120,7 +169,7 @@ def cmd_preprocess(args: argparse.Namespace) -> int:
             write_volume(Volume(brain_mask, t1c.affine), output_dir / BRAIN_MASK, dtype=np.uint8)
             case = load_case(output_dir)
             qc_path = write_case_qc_report(case, output_dir=output_dir)
-            args.observer.artifact(qc_path, kind="qc_report", patient_id=record.patient_id)
+            observe_qc_artifacts(args, qc_path, record.patient_id)
             args.observer.event(
                 "case_preprocess_metrics",
                 patient_id=record.patient_id,
@@ -149,7 +198,7 @@ def cmd_make_labels(args: argparse.Namespace) -> int:
             args.observer.artifact(output, kind="recurrence_mask_on_baseline", patient_id=record.patient_id)
             case = load_case(case_dir(args.derived_root, record.patient_id), require_label=True)
             qc_path = write_case_qc_report(case, output_dir=output.parent)
-            args.observer.artifact(qc_path, kind="qc_report", patient_id=record.patient_id)
+            observe_qc_artifacts(args, qc_path, record.patient_id)
             args.observer.event(
                 "case_label_metrics",
                 patient_id=record.patient_id,
@@ -233,7 +282,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
                 write_volume(risk, prediction_path, dtype=np.float32)
                 args.observer.artifact(prediction_path, kind="prediction", patient_id=record.patient_id)
             qc_path = write_case_qc_report(case, output_dir=Path(args.derived_root) / record.patient_id, risk=risk)
-            args.observer.artifact(qc_path, kind="qc_report", patient_id=record.patient_id)
+            observe_qc_artifacts(args, qc_path, record.patient_id)
             case_metrics = evaluate_case(case, risk)
             metrics.append(case_metrics)
             args.observer.event("case_evaluation_metrics", **case_metrics.__dict__)
@@ -287,7 +336,7 @@ def cmd_predict(args: argparse.Namespace) -> int:
         write_volume(risk, prediction_path, dtype=np.float32)
         qc_path = write_case_qc_report(case, output_dir=output_dir, risk=risk)
         args.observer.artifact(prediction_path, kind="prediction", patient_id=case.patient_id)
-        args.observer.artifact(qc_path, kind="qc_report", patient_id=case.patient_id)
+        observe_qc_artifacts(args, qc_path, case.patient_id)
         args.observer.event(
             "prediction_summary",
             patient_id=case.patient_id,
@@ -298,6 +347,13 @@ def cmd_predict(args: argparse.Namespace) -> int:
         )
     print(f"wrote prediction: {prediction_path}")
     return 0
+
+
+def observe_qc_artifacts(args: argparse.Namespace, qc_path: Path, patient_id: str) -> None:
+    args.observer.artifact(qc_path, kind="qc_report", patient_id=patient_id)
+    summary_path = qc_path.parent / CASE_QC_SUMMARY_JSON
+    if summary_path.exists():
+        args.observer.artifact(summary_path, kind="qc_summary", patient_id=patient_id)
 
 
 def _load_training_case(record: PatientRecord, derived_root: str | Path):

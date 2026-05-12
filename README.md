@@ -6,7 +6,7 @@
 [![Status: research prototype](https://img.shields.io/badge/status-research%20prototype-orange)](#research-only)
 [![Data: UCSD-PTGBM](https://img.shields.io/badge/data-UCSD--PTGBM-lightgrey)](https://www.cancerimagingarchive.net/collection/ucsd-ptgbm/)
 
-Research pipeline for predicting future glioma recurrence locations from post-operative MRI. The current public-data workflow is MRI-only and uses longitudinal baseline/follow-up MRI with tumor segmentations.
+Research pipeline for predicting future glioma recurrence locations from post-operative, pre-radiotherapy MRI. The current public-data workflow is MRI-only and uses longitudinal baseline/follow-up MRI with tumor segmentations. The intended institutional workflow starts from clinical DICOM, converts to NIfTI for research processing, and later exports stable research outputs back to DICOM.
 
 V1 outputs a voxelwise recurrence-risk heatmap in the patient baseline space. It is a research prototype, not a clinical dose recommendation, treatment-planning system, or medical device.
 
@@ -27,21 +27,22 @@ uv run glioma-risk evaluate --manifest /tmp/glioma-smoke/patients.csv --derived-
 uv run glioma-risk predict --case-dir /tmp/glioma-smoke/derived/SYN002 --model-path /tmp/glioma-smoke/models/tumor-distance.json --output-dir /tmp/glioma-smoke/derived/SYN002
 ```
 
-Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to inspect the overlay report. The synthetic data is only for checking that the software works; it is not scientifically meaningful.
+Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to inspect the overlay report. The report includes an axial slice browser, quick jumps to representative slices, case-summary tooltips, and opacity controls for baseline tumor, recurrence, and risk overlays. A machine-readable QC summary is written beside it as `qc_summary.json`. The synthetic data is only for checking that the software works; it is not scientifically meaningful.
 
 ## What It Does
 
-- Builds longitudinal patient pairs: baseline MRI input, later recurrence mask label.
+- Builds longitudinal patient pairs: post-op/pre-RT baseline MRI input, later recurrence mask label.
 - Keeps follow-up MRI out of prediction-time model inputs.
 - Normalizes baseline T1c and FLAIR MRI and creates brain masks.
 - Maps reviewed follow-up recurrence masks back into baseline space.
+- Audits clinical DICOM headers for MRI sequence availability and scanner metadata without loading pixel data.
 - Trains simple baseline models before deep learning.
 - Evaluates voxel AUPRC, Dice-style overlap, top-risk-volume coverage, Brier score, calibration, and baseline comparisons.
 - Writes structured observability artifacts for every CLI run.
 
 ## Research Only
 
-This repository is for retrospective research and engineering validation. Do not use it for clinical decision-making, treatment planning, radiotherapy dose design, or patient management.
+This repository is for retrospective research and engineering validation. Do not use it for clinical decision-making, treatment planning, radiotherapy dose design, boost-region selection, or patient management.
 
 The current acceptance bar is deliberately conservative: a learned model should beat the `tumor-distance` baseline under patient-level validation before it is treated as scientifically interesting.
 
@@ -64,6 +65,7 @@ The default `make-labels` path uses SimpleITK MRI-to-MRI registration. SimpleITK
 ## CLI Stages
 
 ```sh
+glioma-risk dicom-audit --dicom-root clinical-dicom --output reports/dicom-series.csv --summary-output reports/dicom-summary.json
 glioma-risk preprocess --manifest patients.csv --derived-root derived
 glioma-risk make-labels --manifest patients.csv --derived-root derived
 glioma-risk train --manifest patients.csv --derived-root derived --model tumor-distance --output models/tumor-distance.json
@@ -79,6 +81,39 @@ Model options:
 - `tumor-distance`: required simple recurrence-risk baseline.
 - `voxel-logistic-mri`: first learned MRI-only baseline using T1c, FLAIR, baseline tumor mask, and distance features.
 - `unet`: optional MONAI/PyTorch 3D U-Net when the `deep` extra is installed.
+
+## Initial Study Requirements
+
+- Output: voxelwise recurrence-risk heatmap only.
+- Baseline timepoint: post-operative, pre-radiotherapy MRI, as close to RT planning as available.
+- Minimum MRI channels: T1c and FLAIR.
+- Preferred MRI channels: T1, T1c, T2, and FLAIR, especially for BraTS-style segmentation pipelines.
+- Source data: clinical DICOM. Internal research format: NIfTI.
+- Labels: clinician-curated recurrence endpoint with pseudoprogression excluded. Spatial labels should come from auto-segmentation plus expert review when available.
+- Recurrence interpretation: residual tumor at baseline is expected to be high risk. Scientific and treatment-planning value depends on separately measuring recurrence inside the baseline tumor footprint and marginal/distant recurrence outside it.
+- Cohort target: about 100-150 development patients and a similarly sized validation cohort.
+- Robustness target: scanner upgrades and a second institution should be tracked explicitly. Foundation models are a candidate path for scanner/protocol robustness after simple baselines.
+
+The intended data flow is:
+
+```text
+DICOM -> DICOM audit/series selection -> NIfTI derivatives -> model/evaluation -> NIfTI risk map -> future DICOM export
+```
+
+The current repository implements the audit and NIfTI research core. DICOM risk-map export is intentionally future work because it should use a standards-aware DICOM SEG or Parametric Map object.
+
+## DICOM Intake Audit
+
+Before converting clinical exports to NIfTI, generate a local DICOM inventory:
+
+```sh
+uv run glioma-risk dicom-audit \
+  --dicom-root /Volumes/External/clinical-dicom \
+  --output /Volumes/External/intake/reports/dicom-series.csv \
+  --summary-output /Volumes/External/intake/reports/dicom-summary.json
+```
+
+The audit reads headers only. By default it writes stable hashed patient keys instead of raw `PatientID` values, omits source file paths because folders can contain identifiers, classifies likely `t1`, `t1c`, `t2`, and `flair` series, counts studies with minimum T1c/FLAIR and full four-sequence availability, and flags whether `PatientName` or `PatientBirthDate` were present in scanned series.
 
 ## UCSD-PTGBM Workflow
 
@@ -154,6 +189,15 @@ Optional but recommended:
 - `baseline_timepoint_id`
 - `recurrence_timepoint_id`
 - `radiotherapy_end_date`
+- `baseline_study_instance_uid`
+- `baseline_t1_series_uid`
+- `baseline_t2_series_uid`
+- `input_format`
+- `institution_id`
+- `scanner_manufacturer`
+- `scanner_model`
+- `magnetic_field_strength`
+- `label_source`
 
 ## Derived Files
 
@@ -166,6 +210,7 @@ Each case directory stores:
 - `brain_mask.nii.gz`
 - `recurrence_risk.nii.gz`
 - `qc_overlay.html`
+- `qc_summary.json`
 
 ## Accessibility
 
@@ -185,18 +230,21 @@ uv run --extra dev python scripts/validate_knowledge_store.py
 - **Affine**: Matrix that maps voxel indices to real patient/world coordinates.
 - **AUPRC**: Area under the precision-recall curve; useful when recurrence voxels are rare.
 - **Baseline / t0**: Earlier post-treatment MRI timepoint used as prediction input.
+- **DICOM**: Clinical imaging file format used by scanners, PACS, and radiotherapy systems.
 - **Baseline tumor mask**: Tumor segmentation at the baseline timepoint. This is a prediction-time location feature.
 - **Brain mask**: Binary mask limiting training/evaluation to brain voxels.
 - **Brier score**: Mean squared error of predicted probabilities; lower is better.
 - **Calibration**: Whether predicted risks match observed recurrence frequencies.
 - **Confirmed recurrence label**: Reviewed decision that a later abnormality is true recurrent/progressive tumor plus a voxelwise mask of that tumor.
 - **Dice**: Spatial overlap score between a predicted region and a label mask.
+- **DICOM SEG**: DICOM segmentation object type suitable for future binary or multi-label mask exports.
 - **FLAIR**: MRI sequence that highlights edema and abnormal fluid-like tissue signal.
 - **Follow-up / t1 / t2**: Later imaging timepoints used to determine whether and where recurrence happened.
 - **GBM**: Glioblastoma, an aggressive glioma.
 - **Glioma**: Brain tumor type arising from glial cells.
 - **Leakage**: Accidental sharing of the same patient across train/validation/test.
 - **NIfTI**: Common research imaging file format, usually `.nii` or `.nii.gz`.
+- **Parametric Map**: DICOM object type suitable for voxelwise quantitative maps such as future risk-map exports.
 - **Patient / case**: One subject in the dataset.
 - **Pseudoprogression**: Early post-radiotherapy imaging change that can mimic recurrence.
 - **QC overlay**: Visual report showing anatomy, masks, and prediction for human review.

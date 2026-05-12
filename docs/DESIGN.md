@@ -6,6 +6,9 @@ This is a research pipeline, not a consumer application. Design decisions priori
 
 - The first screen of any report should identify the patient/case, stage, and research-only limitation.
 - QC reports must expose the actual imaging-derived artifacts: T1c, FLAIR, baseline tumor mask, recurrence mask, and prediction.
+- QC reports should provide overlay opacity controls, axial slice browsing, representative quick jumps, and machine-readable summary metadata.
+- Case-summary fields should include concise tooltips so collaborators can understand what each QC number represents and why it matters.
+- QC summaries should make residual-tumor recurrence separable from marginal or distant recurrence outside the baseline tumor footprint.
 - Visualizations should be dense enough for repeated review and conservative enough for clinical-research audit.
 - The pipeline should fail loudly on ambiguous geometry, missing human-reviewed labels, and split leakage.
 
