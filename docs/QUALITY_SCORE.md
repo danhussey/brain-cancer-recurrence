@@ -10,11 +10,13 @@
 | Observability | B | CLI stages emit JSONL events and summaries with artifacts, timings, and metrics. Needs dashboards once real runs exist. |
 | Synthetic smoke harness | B | Deterministic generator and pipeline smoke test exist. Needs CI wiring. |
 | UCSD-PTGBM adapter | B | Longitudinal MRI+mask pairing is tested with fake workbook data. Needs validation on the real downloaded layout. |
+| Clinical DICOM intake | C | Read-only DICOM header audit exists with fake-DICOM tests. Needs real onsite export validation and DICOM-to-NIfTI conversion orchestration. |
 | Agent legibility | B | Core doc map exists. Knowledge-store validation added in V2 scaffold pass. |
 
 ## Next Quality Investments
 
 - Add real-layout UCSD fixture metadata for adapter regression tests.
+- Validate `dicom-audit` on a de-identified clinical export and record expected scanner/sequence naming patterns.
 - Add model-card style evaluation summaries.
 - Add CI job that runs knowledge-store validation and tests.
 - Add doc freshness checks that compare CLI help to README examples.

@@ -42,6 +42,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="glioma-risk")
     subparsers = parser.add_subparsers(required=True)
 
+    dicom_audit = subparsers.add_parser("dicom-audit", help="Read DICOM headers and summarize MRI sequence availability")
+    dicom_audit.add_argument("--dicom-root", required=True, help="Root directory containing clinical DICOM exports")
+    dicom_audit.add_argument("--output", required=True, help="Series-level CSV inventory path")
+    dicom_audit.add_argument("--summary-output", required=True, help="Strict JSON summary path")
+    dicom_audit.add_argument(
+        "--include-patient-id",
+        action="store_true",
+        help="Write raw PatientID values to the CSV/JSON instead of stable hashed patient keys",
+    )
+    dicom_audit.add_argument(
+        "--include-paths",
+        action="store_true",
+        help="Write relative example file paths to the CSV. Off by default because folder names may contain identifiers.",
+    )
+    dicom_audit.add_argument(
+        "--patient-id-salt",
+        default="glioma-recurrence-risk",
+        help="Salt used when hashing PatientID values for local pseudonymous audit keys",
+    )
+    add_observability_args(dicom_audit)
+    dicom_audit.set_defaults(func=cmd_dicom_audit, stage="dicom-audit")
+
     preprocess = subparsers.add_parser("preprocess", help="Resample baseline MRI/mask to T1c and normalize MRI")
     add_manifest_args(preprocess)
     add_observability_args(preprocess)
@@ -93,6 +115,25 @@ def build_parser() -> argparse.ArgumentParser:
 def add_manifest_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--derived-root", required=True)
+
+
+def cmd_dicom_audit(args: argparse.Namespace) -> int:
+    from .dicom import audit_dicom_tree
+
+    summary = audit_dicom_tree(
+        args.dicom_root,
+        output_csv=args.output,
+        summary_json=args.summary_output,
+        include_patient_id=args.include_patient_id,
+        include_paths=args.include_paths,
+        patient_id_salt=args.patient_id_salt,
+    )
+    args.observer.event("dicom_audit_summary", **summary)
+    args.observer.artifact(args.output, kind="dicom_series_inventory")
+    args.observer.artifact(args.summary_output, kind="dicom_audit_summary")
+    print(f"wrote DICOM series inventory: {args.output}")
+    print(f"wrote DICOM audit summary: {args.summary_output}")
+    return 0
 
 
 def cmd_preprocess(args: argparse.Namespace) -> int:

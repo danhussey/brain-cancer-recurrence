@@ -38,6 +38,15 @@ OPTIONAL_MANIFEST_COLUMNS = (
     "baseline_timepoint_id",
     "recurrence_timepoint_id",
     "radiotherapy_end_date",
+    "baseline_study_instance_uid",
+    "baseline_t1_series_uid",
+    "baseline_t2_series_uid",
+    "input_format",
+    "institution_id",
+    "scanner_manufacturer",
+    "scanner_model",
+    "magnetic_field_strength",
+    "label_source",
 )
 
 ALLOWED_SPLITS = {"train", "validation", "val", "test", "holdout"}

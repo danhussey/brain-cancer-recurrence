@@ -17,6 +17,7 @@ dependencies = [
   "scikit-learn>=1.4",
   "matplotlib>=3.8",
   "simpleitk>=2.3",
+  "pydicom>=3.0",
 ]
 
 [project.optional-dependencies]

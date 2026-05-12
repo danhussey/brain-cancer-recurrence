@@ -166,6 +166,10 @@ def resolve_observability_root(args: argparse.Namespace) -> Path:
         return Path(args.derived_root).parent / "observability"
     if hasattr(args, "output_dir"):
         return Path(args.output_dir).parent / "observability"
+    if hasattr(args, "summary_output"):
+        return Path(args.summary_output).parent / "observability"
+    if hasattr(args, "output"):
+        return Path(args.output).parent / "observability"
     return Path("observability")
 
 

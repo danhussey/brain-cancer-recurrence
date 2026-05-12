@@ -40,6 +40,15 @@ class PatientRecord:
     baseline_timepoint_id: str = ""
     recurrence_timepoint_id: str = ""
     radiotherapy_end_date: date | None = None
+    baseline_study_instance_uid: str = ""
+    baseline_t1_series_uid: str = ""
+    baseline_t2_series_uid: str = ""
+    input_format: str = ""
+    institution_id: str = ""
+    scanner_manufacturer: str = ""
+    scanner_model: str = ""
+    magnetic_field_strength: str = ""
+    label_source: str = ""
 
     @property
     def normalized_split(self) -> str:
@@ -114,6 +123,15 @@ def _row_to_record(row: dict[str, str], *, row_number: int) -> PatientRecord:
         baseline_timepoint_id=(row.get("baseline_timepoint_id") or "").strip(),
         recurrence_timepoint_id=(row.get("recurrence_timepoint_id") or "").strip(),
         radiotherapy_end_date=parse_date(row.get("radiotherapy_end_date") or "", column="radiotherapy_end_date"),
+        baseline_study_instance_uid=(row.get("baseline_study_instance_uid") or "").strip(),
+        baseline_t1_series_uid=(row.get("baseline_t1_series_uid") or "").strip(),
+        baseline_t2_series_uid=(row.get("baseline_t2_series_uid") or "").strip(),
+        input_format=(row.get("input_format") or "").strip(),
+        institution_id=(row.get("institution_id") or "").strip(),
+        scanner_manufacturer=(row.get("scanner_manufacturer") or "").strip(),
+        scanner_model=(row.get("scanner_model") or "").strip(),
+        magnetic_field_strength=(row.get("magnetic_field_strength") or "").strip(),
+        label_source=(row.get("label_source") or "").strip(),
     )
 
 
