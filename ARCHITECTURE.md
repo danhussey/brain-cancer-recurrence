@@ -29,4 +29,4 @@ The manifest is `patients.csv`. Derived case data lives under `<derived-root>/<p
 
 ## Safety Boundaries
 
-This is a retrospective research pipeline. It outputs calibrated voxelwise recurrence-risk heatmaps in baseline space and must not present dose recommendations. The input contract is baseline T1c, baseline FLAIR, and baseline tumor mask. Follow-up scans and reviewed recurrence masks are only used to build labels and evaluate predictions.
+This is a retrospective research pipeline. It outputs voxelwise recurrence-risk heatmaps in baseline space and must not present dose recommendations. The input contract is baseline T1c, baseline FLAIR, and baseline tumor mask. Follow-up scans and reviewed recurrence masks are only used to build labels and evaluate predictions. Evaluation reports include calibration summaries, but the pipeline does not apply a separate calibration stage to model outputs.
