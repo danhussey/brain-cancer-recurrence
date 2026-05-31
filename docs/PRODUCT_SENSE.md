@@ -12,5 +12,5 @@ The product is a retrospective glioma recurrence-risk research harness. Its valu
 
 - A new site can understand the manifest and derived-file contracts from repo docs alone.
 - Every prediction has a corresponding QC report.
-- Evaluation compares learned models against the simple tumor-distance baseline.
+- Evaluation currently compares the voxel-logistic MRI model against the simple tumor-distance baseline.
 - The repository refuses clinical-use framing until prospective validation and regulatory controls exist.

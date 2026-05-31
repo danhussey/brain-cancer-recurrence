@@ -16,11 +16,11 @@ The pipeline is not a clinical dose recommendation, boost-region generator, trea
 - Minimum baseline channels: post-op/pre-RT T1c and FLAIR.
 - Preferred baseline channels: T1, T1c, T2, and FLAIR, especially for BraTS-style segmentation pipelines.
 - Baseline tumor masks may come from segmentation pipelines, then expert review.
-- Recurrence labels may be weak patient/timepoint recurrence labels or spatial recurrence masks. Spatial training and voxelwise evaluation require reviewed recurrence masks.
+- Current voxelwise training and evaluation require reviewed recurrence-mask paths. Patient/timepoint recurrence adjudication is used for cohort selection and pseudoprogression filtering, not as a standalone weak-label training mode.
 
 ## Outputs
 
-Derived NIfTI files:
+Fixed derived NIfTI filenames used as stages produce them:
 
 - `baseline_t1c.nii.gz`
 - `baseline_flair.nii.gz`
@@ -34,10 +34,10 @@ Future DICOM handoff should export voxelwise risk maps as standards-aware DICOM 
 ## Stage Semantics
 
 - `dicom-audit`: read DICOM headers without pixel data, classify MRI sequences, count T1c/FLAIR and four-sequence availability, summarize scanner metadata, and flag likely PHI-bearing fields.
-- `preprocess`: register or resample FLAIR and baseline tumor mask to baseline T1c, normalize MRI, and create brain masks.
+- `preprocess`: resample FLAIR and baseline tumor mask to baseline T1c using existing geometry, normalize MRI, and create brain masks.
 - `make-labels`: require human-reviewed recurrence masks, then map masks to baseline space by SimpleITK MRI-to-MRI registration unless an explicit affine or assume-aligned fallback is requested.
-- `train`: train simple baselines first; MRI-only work must compare learned models against `tumor-distance`. Optional MONAI/PyTorch 3D U-Net training is available behind the `deep` extra.
-- `evaluate`: compute patient-level metrics, calibration, visual QC, recurrence inside/outside baseline tumor summaries, and comparison against simple baselines.
+- `train`: train simple baselines first. Optional MONAI/PyTorch 3D U-Net training is available behind the `deep` extra.
+- `evaluate`: compute per-case voxel metrics summarized across selected patients, calibration, visual QC, recurrence inside/outside baseline tumor summaries, and tumor-distance comparison for the voxel-logistic MRI baseline.
 - `predict`: produce `recurrence_risk.nii.gz` and a research-only overlay report.
 - Every CLI stage emits structured observability artifacts unless `--no-observability` is passed.
 
@@ -46,10 +46,10 @@ Future DICOM handoff should export voxelwise risk maps as standards-aware DICOM 
 - Follow-up scans are never prediction inputs.
 - Recurrence masks are labels only.
 - Follow-up T1c is used only as the moving-image reference for label registration.
-- Recurrences inside the early post-RT pseudoprogression window are excluded or flagged unless adjudication indicates clinical or histologic confirmation.
-- Every case requires QC overlays for T1c, FLAIR, baseline tumor mask, recurrence mask mapped to baseline, and final prediction.
+- Records inside the early post-RT pseudoprogression window are excluded by default unless adjudication indicates clinical or histologic confirmation; `train` has an explicit override flag.
+- Case QC reports must show T1c, FLAIR, baseline tumor mask, and whichever recurrence-label or prediction overlays are available at that stage.
 - QC reports should expose recurrence inside versus outside the baseline tumor footprint so obvious residual-tumor recurrence does not get confused with the harder treatment-improvement target.
-- The model must beat the `tumor-distance` baseline in cross-validation before it is scientifically interesting.
+- A learned model must beat the `tumor-distance` baseline under patient-level validation before it is scientifically interesting. Cross-validation orchestration remains future work.
 
 ## Study Defaults
 

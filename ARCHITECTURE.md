@@ -12,9 +12,9 @@ The pipeline is a Python package with a thin CLI. It is structured so that medic
 - `labels.py`: reviewed recurrence-mask ingestion and baseline-space mapping by SimpleITK, affine, or explicitly assumed-aligned registration.
 - `models.py`: tumor-distance and voxel-logistic MRI-only baselines.
 - `deep.py`: optional MONAI/PyTorch 3D U-Net entry points.
-- `evaluation.py`: patient-level metrics, calibration, and baseline comparison helpers.
+- `evaluation.py`: per-case voxel metrics, calibration bins, and metric summarization helpers.
 - `observability.py`: structured JSONL events, run summaries, case timings, and artifact tracking for every CLI stage.
-- `reports.py`: mandatory case-level QC overlays and research-only report text.
+- `reports.py`: case-level QC summaries, available overlays, and research-only report text.
 - `cli.py`: stage orchestration for `dicom-audit`, `preprocess`, `make-labels`, `train`, `evaluate`, and `predict`.
 
 ## Data Contract
@@ -27,7 +27,7 @@ DICOM -> local DICOM audit/series selection -> NIfTI derivatives -> model/evalua
 
 The current repository implements read-only DICOM audit and NIfTI research derivatives. DICOM export of risk maps is intentionally not implemented yet; it should be added as a standards-aware DICOM SEG or Parametric Map export, not as an ad hoc screenshot.
 
-The manifest is `patients.csv`. Required V1 prediction inputs are post-operative, pre-radiotherapy baseline T1c and FLAIR. T1 and T2 are optional but preferred for BraTS-style or foundation-model paths. Derived case data lives under `<derived-root>/<patient_id>/` using fixed names:
+The manifest is `patients.csv`. Required V1 prediction inputs are post-operative, pre-radiotherapy baseline T1c and FLAIR. T1 and T2 are optional but preferred for BraTS-style or foundation-model paths. Derived case data lives under `<derived-root>/<patient_id>/` using fixed names as each stage produces them:
 
 - `baseline_t1c.nii.gz`
 - `baseline_flair.nii.gz`

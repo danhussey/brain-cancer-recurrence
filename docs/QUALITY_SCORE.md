@@ -9,7 +9,7 @@
 | Reporting | B | Static QC reports now include an axial slice browser, representative quick jumps, T1c/FLAIR overlay stacks, opacity controls, case-summary tooltips, recurrence-inside/outside-baseline-tumor summary fields, and `qc_summary.json`. Needs visual regression checks and formal sign-off workflow. |
 | Observability | B | CLI stages emit JSONL events and summaries with artifacts, timings, and metrics. Needs dashboards once real runs exist. |
 | Synthetic smoke harness | B | Deterministic generator and pipeline smoke test exist. Needs CI wiring. |
-| UCSD-PTGBM adapter | B | Longitudinal MRI+mask pairing is tested with fake workbook data. Needs validation on the real downloaded layout. |
+| UCSD-PTGBM adapter | B | Longitudinal MRI+mask pairing is tested with fake workbook data, and completed run notes record validation on the local downloaded layout. Needs durable real-layout fixture metadata for regression. |
 | Clinical DICOM intake | C | Read-only DICOM header audit exists with fake-DICOM tests. Needs real onsite export validation and DICOM-to-NIfTI conversion orchestration. |
 | Agent legibility | B | Core doc map exists. Knowledge-store validation added in V2 scaffold pass. |
 
