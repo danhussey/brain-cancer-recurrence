@@ -22,4 +22,4 @@ Run the README quickstart first. It creates a synthetic no-data smoke dataset an
 
 For real data, start with a de-identified pilot manifest and one case. Review generated QC HTML before trusting any metric. Synthetic outputs validate mechanics only and must not be used for scientific conclusions.
 
-Before converting a clinical DICOM export to NIfTI, run `glioma-risk dicom-audit` on the export root and inspect the sequence availability, scanner metadata, and PHI-field flags.
+Before converting a clinical DICOM export to NIfTI, run `uv run glioma-risk dicom-audit` on the export root and inspect the sequence availability, scanner metadata, and PHI-field flags.

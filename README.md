@@ -43,7 +43,7 @@ flowchart LR
 
 ## Try It Without Medical Data
 
-This smoke test creates a tiny fake dataset, runs the full MRI-only path, writes metrics, and opens the same QC machinery used for real cases. The fake images are only for checking that the software works.
+This smoke test creates a tiny fake dataset, runs the full MRI-only path, writes metrics, and exercises the same QC report code used for real cases. The fake images are only for checking that the software works.
 
 ```sh
 git clone https://github.com/danhussey/brain-cancer-recurrence.git
@@ -62,7 +62,7 @@ Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` after the run.
 
 ## QC Report
 
-The QC report is a static HTML file written beside each case. It includes a case summary, tooltip explanations, opacity controls, an axial slice browser, and overlays for baseline tumor, recurrence label, and model risk.
+The QC report is a static HTML file written beside each case. It includes a case summary, tooltip explanations, opacity controls, an axial slice browser, and overlays for the artifacts available at that stage: baseline tumor, recurrence label, and/or model risk.
 
 ![Synthetic QC report preview](docs/assets/qc-report-preview.png)
 
@@ -70,11 +70,11 @@ The slice browser is deliberately simple: it is filesystem-friendly, works witho
 
 ![Synthetic axial slice browser animation](docs/assets/qc-slice-browser.gif)
 
-Reports also write `qc_summary.json`, which includes recurrence voxels inside and outside the baseline tumor mask. That distinction matters because residual tumor is expected to be high risk; the harder scientific question is whether a model can predict marginal or distant recurrence outside the obvious baseline tumor footprint.
+Reports also write `qc_summary.json`, including recurrence voxels inside and outside the baseline tumor mask when a recurrence label is present. That distinction matters because residual tumor is expected to be high risk; the harder scientific question is whether a model can predict marginal or distant recurrence outside the obvious baseline tumor footprint.
 
 ## Running The Pipeline
 
-Base install includes the MRI pipeline, NIfTI IO, SimpleITK registration, QC reports, baseline models, and tests.
+The core install includes the MRI pipeline, NIfTI IO, SimpleITK registration, QC reports, and baseline models. The dev extra installs the test runner.
 
 ```sh
 uv sync --extra dev
@@ -89,13 +89,13 @@ uv sync --extra dev --extra deep
 Common CLI stages:
 
 ```sh
-glioma-risk dicom-audit --dicom-root clinical-dicom --output reports/dicom-series.csv --summary-output reports/dicom-summary.json
-glioma-risk preprocess --manifest patients.csv --derived-root derived
-glioma-risk make-labels --manifest patients.csv --derived-root derived
-glioma-risk train --manifest patients.csv --derived-root derived --model tumor-distance --output models/tumor-distance.json
-glioma-risk train --manifest patients.csv --derived-root derived --model voxel-logistic-mri --output models/voxel-logistic-mri.json
-glioma-risk evaluate --manifest patients.csv --derived-root derived --model-path models/voxel-logistic-mri.json --output reports/eval.json
-glioma-risk predict --case-dir derived/P001 --model-path models/voxel-logistic-mri.json --output-dir derived/P001
+uv run glioma-risk dicom-audit --dicom-root clinical-dicom --output reports/dicom-series.csv --summary-output reports/dicom-summary.json
+uv run glioma-risk preprocess --manifest patients.csv --derived-root derived
+uv run glioma-risk make-labels --manifest patients.csv --derived-root derived
+uv run glioma-risk train --manifest patients.csv --derived-root derived --model tumor-distance --output models/tumor-distance.json
+uv run glioma-risk train --manifest patients.csv --derived-root derived --model voxel-logistic-mri --output models/voxel-logistic-mri.json
+uv run glioma-risk evaluate --manifest patients.csv --derived-root derived --model-path models/voxel-logistic-mri.json --output reports/eval.json
+uv run glioma-risk predict --case-dir derived/P001 --model-path models/voxel-logistic-mri.json --output-dir derived/P001
 ```
 
 | Model | Role |
@@ -130,7 +130,7 @@ uv run python scripts/prepare_ucsd_ptgbm_dataset.py \
   --output-root /Volumes/External/UCSD-PTGBM-pipeline
 ```
 
-The adapter selects subjects with at least two complete MRI+mask timepoints, uses the earliest complete post-treatment timepoint as baseline, and uses the earliest later residual/recurrent tumor timepoint as the recurrence label. Negative-case tables can keep pseudoprogression, radiation-necrosis, and non-specific later timepoints as controls with empty recurrence labels.
+The adapter selects subjects with at least two complete MRI+mask timepoints, uses the earliest eligible complete timepoint as baseline, and uses the earliest later residual/recurrent tumor timepoint as the recurrence label. Negative-case tables can keep pseudoprogression, radiation-necrosis, and non-specific later timepoints as controls with empty recurrence labels.
 
 ## Research Use
 
@@ -150,16 +150,16 @@ Required columns:
 | `baseline_scan_date` | Baseline post-op/pre-RT scan date. |
 | `baseline_t1c_series_uid` | Baseline T1 post-contrast series UID or NIfTI path in prepared workflows. |
 | `baseline_flair_series_uid` | Baseline FLAIR series UID or NIfTI path in prepared workflows. |
-| `recurrence_scan_date` | Follow-up scan date used for recurrence label context. |
+| `recurrence_scan_date` | Follow-up scan date used for recurrence label context; the column is required, but values may be empty when unavailable. |
 | `recurrence_adjudication` | Clinical recurrence/progression decision. |
 | `reviewed_recurrence_mask_path` | Reviewed recurrence mask path, or an empty label path for controls. |
-| `split` | `train`, `validation`, `test`, or `holdout`. |
+| `split` | `train`, `validation`/`val`, `test`, or `holdout`. |
 
 Recommended optional columns include `reviewed_recurrence_reference_image_path`, `source_dataset`, `baseline_timepoint_id`, `recurrence_timepoint_id`, `radiotherapy_end_date`, `baseline_study_instance_uid`, `baseline_t1_series_uid`, `baseline_t2_series_uid`, `input_format`, `institution_id`, `scanner_manufacturer`, `scanner_model`, `magnetic_field_strength`, and `label_source`.
 
 ### Derived Case Files
 
-Each case directory stores these files:
+A fully processed case can use these fixed filenames. Some stages only write the subset they have produced so far.
 
 ```text
 baseline_t1c.nii.gz
@@ -181,7 +181,7 @@ Every CLI stage writes structured run artifacts unless `--no-observability` is p
 | `events.jsonl` | Timestamped stage, case, metric, and artifact events. |
 | `summary.json` | Final status, duration, case statuses, command args, and output artifacts. |
 
-For manifest stages, artifacts default to `DERIVED_ROOT/../observability/RUN_ID/`. For `predict`, they default beside the output directory.
+For manifest stages, artifacts default to `DERIVED_ROOT/../observability/RUN_ID/`. For `predict`, they default beside the output directory. For `dicom-audit`, they default under the summary-output directory's parent.
 
 ### Development Checks
 
