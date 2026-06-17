@@ -8,6 +8,12 @@
 
 This repository builds a retrospective research pipeline for predicting where glioma may recur after surgery. It uses post-operative, pre-radiotherapy MRI as the baseline, maps later reviewed recurrence labels back into that baseline space, and produces a voxelwise `recurrence_risk.nii.gz` heatmap plus a human-readable QC report.
 
+## Portfolio Note
+
+I include this project as high-stakes evaluation engineering: patient-level
+splits, leakage control, label provenance, calibration, human-readable QC
+artifacts, and conservative baseline comparison.
+
 The public-data path is MRI-only and uses longitudinal NIfTI images and tumor segmentations. The intended institutional path starts from clinical DICOM, converts to NIfTI for research processing, and later exports stable research outputs back to DICOM.
 
 | Question | V1 answer |
