@@ -1,0 +1,315 @@
+{
+  "baseline_tumor_fraction_of_brain": 0.003881,
+  "baseline_tumor_voxels": 5764,
+  "brain_mask_fraction": 0.088524,
+  "brain_mask_voxels": 1485184,
+  "flair_stats": {
+    "max": 4.287873,
+    "median": 0.0,
+    "min": -2.128374,
+    "p01": -2.128374,
+    "p99": 4.286474
+  },
+  "patient_id": "public-ucsd-ptgbm-case",
+  "preprocessing_steps": {
+    "baseline_tumor_resampling": "nearest-neighbor to baseline T1c grid",
+    "bias_correction_status": "not applied",
+    "brain_mask_method": "heuristic non-zero T1c/FLAIR mask with optional binary cleanup",
+    "flair_alignment": "header-affine resampling to baseline T1c grid",
+    "skull_stripping_status": "proxy-only; dedicated skull stripping not yet applied",
+    "visual_registration_qc": "T1c/FLAIR checkerboard plus mask overlays"
+  },
+  "quality_flags": [],
+  "research_only": "Research use only. This output is a recurrence-risk heatmap in baseline space and is not a clinical dose recommendation.",
+  "selected_slices": [
+    {
+      "index": 128,
+      "reason": "midline"
+    },
+    {
+      "index": 110,
+      "reason": "brain mask peak"
+    },
+    {
+      "index": 91,
+      "reason": "baseline tumor peak"
+    }
+  ],
+  "shape": [
+    256,
+    256,
+    256
+  ],
+  "source_geometry": {
+    "baseline_tumor": null,
+    "flair": null,
+    "t1c": null
+  },
+  "spacing_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "t1c_stats": {
+    "max": 3.990905,
+    "median": 0.0,
+    "min": -1.843751,
+    "p01": -1.843751,
+    "p99": 3.989384
+  },
+  "viewer_slice_count": 63,
+  "viewer_slices": [
+    {
+      "index": 0,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 4,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 8,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 12,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 17,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 21,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 25,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 29,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 34,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 38,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 42,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 46,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 51,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 55,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 59,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 63,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 68,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 72,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 76,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 80,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 85,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 89,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 91,
+      "reason": "baseline tumor peak"
+    },
+    {
+      "index": 93,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 97,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 102,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 106,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 110,
+      "reason": "brain mask peak"
+    },
+    {
+      "index": 114,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 119,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 123,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 127,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 128,
+      "reason": "midline"
+    },
+    {
+      "index": 131,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 136,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 140,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 144,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 148,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 153,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 157,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 161,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 165,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 170,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 174,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 178,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 182,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 187,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 191,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 195,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 199,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 204,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 208,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 212,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 216,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 221,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 225,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 229,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 233,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 238,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 242,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 246,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 250,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 255,
+      "reason": "sampled axial slice"
+    }
+  ]
+}

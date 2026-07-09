@@ -1,0 +1,344 @@
+{
+  "baseline_tumor_voxels": 5764,
+  "brain_voxels": 1485184,
+  "flair_stats": {
+    "max": 4.287873,
+    "median": 0.0,
+    "min": -2.128374,
+    "p01": -2.128374,
+    "p99": 4.286474
+  },
+  "patient_id": "public-ucsd-ptgbm-case",
+  "prediction_overlap": {
+    "evaluated_voxels": 1485184,
+    "mean_risk_in_recurrence": 0.890512,
+    "mean_risk_outside_recurrence": 0.294103,
+    "positive_voxels": 592,
+    "top_1pct": {
+      "dice": 0.007252,
+      "fraction": 0.01,
+      "overlap_voxels": 56,
+      "predicted_voxels": 14853,
+      "recurrence_coverage": 0.094595,
+      "risk_threshold": 0.998967
+    },
+    "top_5pct": {
+      "dice": 0.012745,
+      "fraction": 0.05,
+      "overlap_voxels": 477,
+      "predicted_voxels": 74260,
+      "recurrence_coverage": 0.805743,
+      "risk_threshold": 0.713469
+    }
+  },
+  "recurrence_location": {
+    "inside_baseline_tumor_voxels": 458,
+    "outside_baseline_tumor_fraction": 0.226351,
+    "outside_baseline_tumor_voxels": 134
+  },
+  "recurrence_mask_present": true,
+  "recurrence_voxels": 592,
+  "research_only": "Research use only. This output is a recurrence-risk heatmap in baseline space and is not a clinical dose recommendation.",
+  "risk_present": true,
+  "risk_stats": {
+    "max": 0.999957,
+    "median": 0.246712,
+    "min": 0.002228,
+    "p01": 0.003842,
+    "p99": 0.998967
+  },
+  "selected_slices": [
+    {
+      "index": 128,
+      "reason": "midline"
+    },
+    {
+      "index": 91,
+      "reason": "baseline tumor peak"
+    },
+    {
+      "index": 105,
+      "reason": "recurrence peak"
+    },
+    {
+      "index": 98,
+      "reason": "risk peak"
+    }
+  ],
+  "shape": [
+    256,
+    256,
+    256
+  ],
+  "spacing_mm": [
+    1.0,
+    1.0,
+    1.0
+  ],
+  "t1c_stats": {
+    "max": 3.990905,
+    "median": 0.0,
+    "min": -1.843751,
+    "p01": -1.843751,
+    "p99": 3.989384
+  },
+  "viewer_slice_count": 64,
+  "viewer_slices": [
+    {
+      "index": 0,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 4,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 8,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 12,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 17,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 21,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 25,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 30,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 34,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 38,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 43,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 47,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 51,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 56,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 60,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 64,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 69,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 73,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 77,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 82,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 86,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 90,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 91,
+      "reason": "baseline tumor peak"
+    },
+    {
+      "index": 95,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 98,
+      "reason": "risk peak"
+    },
+    {
+      "index": 99,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 103,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 105,
+      "reason": "recurrence peak"
+    },
+    {
+      "index": 108,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 112,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 116,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 121,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 125,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 128,
+      "reason": "midline"
+    },
+    {
+      "index": 129,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 133,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 138,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 142,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 146,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 151,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 155,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 159,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 164,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 168,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 172,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 177,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 181,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 185,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 190,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 194,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 198,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 203,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 207,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 211,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 216,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 220,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 224,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 229,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 233,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 237,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 242,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 246,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 250,
+      "reason": "sampled axial slice"
+    },
+    {
+      "index": 255,
+      "reason": "sampled axial slice"
+    }
+  ]
+}

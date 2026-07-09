@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QC Overlay public-ucsd-ptgbm-case</title>
+
+<style>
+:root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+body { margin: 0; background: #f7f7f5; color: #1b1b1b; }
+main { max-width: 1180px; margin: 0 auto; padding: 28px; }
+header, section { margin-bottom: 24px; }
+.eyebrow { margin: 0 0 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #555; }
+h1 { margin: 0 0 8px; font-size: 30px; }
+h2 { margin: 0 0 12px; font-size: 19px; }
+h3 { margin: 0 0 12px; font-size: 16px; }
+.disclaimer { max-width: 860px; padding: 10px 12px; background: #fff3cd; border-left: 4px solid #b58100; }
+table { border-collapse: collapse; width: 100%; background: #fff; }
+th, td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; font-size: 14px; }
+th { width: 220px; color: #333; }
+.summary-label-text { margin-right: 6px; }
+.summary-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #777;
+  border-radius: 50%;
+  color: #333;
+  background: #f7f7f5;
+  font-size: 11px;
+  line-height: 1;
+  cursor: help;
+}
+.summary-help::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  z-index: 20;
+  width: min(300px, calc(100vw - 56px));
+  padding: 8px 10px;
+  border: 1px solid #333;
+  background: #fff;
+  color: #111;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+}
+.summary-help:hover::after,
+.summary-help:focus::after { opacity: 1; }
+.summary-help:focus { outline: 2px solid #1a73e8; outline-offset: 2px; }
+.timepoint-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+.timepoint-context div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.timepoint-context strong { font-size: 14px; }
+.timepoint-context span { color: #555; font-size: 13px; line-height: 1.35; }
+.overlay-key-heading { margin: 0 0 8px; }
+.overlay-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 0 0 10px;
+}
+.overlay-key div {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.overlay-key strong { font-size: 14px; }
+.overlay-key span:last-child { grid-column: 2; color: #555; font-size: 12px; }
+.overlay-swatch {
+  grid-row: span 2;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #222;
+}
+.overlay-swatch.tumor { background: rgb(0, 217, 255); }
+.overlay-swatch.recurrence { background: rgb(255, 38, 217); }
+.overlay-swatch.risk { background: linear-gradient(90deg, rgb(0, 89, 255), rgb(255, 89, 0)); }
+.controls { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px; background: #fff; border: 1px solid #ddd; }
+.controls label { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.quality-flags { margin: 12px 0 0; padding: 10px 12px; border: 1px solid #ddd; background: #fff; }
+.quality-flags h3 { margin: 0 0 8px; }
+.quality-flags ul { margin: 0; padding-left: 18px; }
+.quality-flags.ok { border-color: #8abf8a; background: #f1fbf1; }
+.quality-flags.warn { border-color: #c49a3a; background: #fff8e6; }
+.slice-browser { background: #fff; border: 1px solid #ddd; padding: 12px; }
+.slice-controls { display: grid; gap: 10px; margin-bottom: 14px; }
+.slice-controls label { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
+.slice-controls input[type="range"] { width: 100%; }
+.slice-jumps { display: flex; flex-wrap: wrap; gap: 8px; }
+.slice-jumps button { border: 1px solid #aaa; background: #fff; padding: 8px 10px; cursor: pointer; }
+.slice-jumps button.active { border-color: #111; background: #111; color: #fff; }
+.slice-jumps span { display: block; font-size: 11px; opacity: 0.78; }
+.viewer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+figure { margin: 0; background: #fff; border: 1px solid #ddd; padding: 10px; }
+figcaption { margin-bottom: 8px; font-weight: 600; }
+.image-stack { position: relative; width: 100%; background: #000; }
+.image-stack img { display: block; width: 100%; height: auto; }
+.image-stack .overlay { position: absolute; inset: 0; pointer-events: none; }
+</style>
+
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Research QC Overlay</p>
+  <h1>public-ucsd-ptgbm-case</h1>
+  <p class="disclaimer">Research use only. This output is a recurrence-risk heatmap in baseline space and is not a clinical dose recommendation.</p>
+</header>
+<section aria-labelledby="summary-heading">
+  <h2 id="summary-heading">Case Summary</h2>
+  <table><tr><th scope="row"><span class="summary-label-text">Shape</span><span class="summary-help" tabindex="0" role="img" aria-label="Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions." data-tooltip="Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions.">i</span></th><td>256 x 256 x 256</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Spacing mm</span><span class="summary-help" tabindex="0" role="img" aria-label="Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale." data-tooltip="Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale.">i</span></th><td>1.0 / 1.0 / 1.0</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Brain voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy." data-tooltip="Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy.">i</span></th><td>1485184</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Baseline tumor voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region." data-tooltip="Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region.">i</span></th><td>5764</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence mask present</span><span class="summary-help" tabindex="0" role="img" aria-label="Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible." data-tooltip="Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible.">i</span></th><td>True</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance." data-tooltip="Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance.">i</span></th><td>592</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence inside baseline tumor</span><span class="summary-help" tabindex="0" role="img" aria-label="Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases." data-tooltip="Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases.">i</span></th><td>458</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence outside baseline tumor</span><span class="summary-help" tabindex="0" role="img" aria-label="Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review." data-tooltip="Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review.">i</span></th><td>134 (22.64%)</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Risk map present</span><span class="summary-help" tabindex="0" role="img" aria-label="Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC." data-tooltip="Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC.">i</span></th><td>True</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Mean risk in recurrence</span><span class="summary-help" tabindex="0" role="img" aria-label="Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred." data-tooltip="Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred.">i</span></th><td>0.891</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Mean risk outside recurrence</span><span class="summary-help" tabindex="0" role="img" aria-label="Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain." data-tooltip="Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain.">i</span></th><td>0.294</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Top 1% risk overlap</span><span class="summary-help" tabindex="0" role="img" aria-label="Overlap between the recurrence label and the highest-risk 1% of evaluated brain voxels, reported as recurrence coverage and Dice." data-tooltip="Overlap between the recurrence label and the highest-risk 1% of evaluated brain voxels, reported as recurrence coverage and Dice.">i</span></th><td>56 recurrence voxels in 14853 high-risk voxels; coverage 9.46%; Dice 0.007</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Top 5% risk overlap</span><span class="summary-help" tabindex="0" role="img" aria-label="Overlap between the recurrence label and the highest-risk 5% of evaluated brain voxels, reported as recurrence coverage and Dice." data-tooltip="Overlap between the recurrence label and the highest-risk 5% of evaluated brain voxels, reported as recurrence coverage and Dice.">i</span></th><td>477 recurrence voxels in 74260 high-risk voxels; coverage 80.57%; Dice 0.013</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Viewer slices</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here." data-tooltip="Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here.">i</span></th><td>64</td></tr></table>
+</section>
+<section aria-labelledby="timepoint-heading">
+  <h2 id="timepoint-heading">Timepoint Context</h2>
+
+  <div class="timepoint-context">
+    <div>
+      <strong>Baseline MRI</strong>
+      <span>Post-operative, pre-radiotherapy T1c and FLAIR. These are prediction-time inputs.</span>
+    </div>
+    <div>
+      <strong>Baseline tumor mask</strong>
+      <span>Baseline-space tumor mask used as a prediction-time location feature.</span>
+    </div>
+    <div>
+      <strong>Recurrence mask</strong>
+      <span>Later follow-up reviewed label mapped back to baseline space. It is used for training and evaluation only.</span>
+    </div>
+    <div>
+      <strong>Risk heatmap</strong>
+      <span>Model output in baseline space, not a treatment or dose recommendation.</span>
+    </div>
+  </div>
+
+</section>
+<section aria-labelledby="controls-heading">
+  <h2 id="controls-heading">Overlay Controls</h2>
+
+  <h3 class="overlay-key-heading">Overlay Key</h3>
+  <div class="overlay-key" aria-label="Overlay color key">
+    <div><span class="overlay-swatch tumor"></span><strong>Baseline tumor</strong><span>Cyan mask; baseline post-op / pre-radiotherapy</span></div>
+    <div><span class="overlay-swatch recurrence"></span><strong>Recurrence mask</strong><span>Magenta mask; later follow-up label mapped to baseline</span></div>
+    <div><span class="overlay-swatch risk"></span><strong>Risk heatmap</strong><span>Blue to orange model output in baseline space</span></div>
+  </div>
+
+  <div class="controls">
+    <label>Baseline tumor <input type="range" min="0" max="1" step="0.05" value="0.80" data-opacity-control="tumor"></label>
+    <label>Recurrence mask <input type="range" min="0" max="1" step="0.05" value="0.85" data-opacity-control="recurrence"></label>
+    <label>Risk heatmap <input type="range" min="0" max="1" step="0.05" value="0.45" data-opacity-control="risk"></label>
+  </div>
+</section>
+<section aria-labelledby="slice-heading">
+  <h2 id="slice-heading">Axial Slice Browser</h2>
+  <div class="slice-browser">
+    <div class="slice-controls">
+      <label for="slice-slider">Slice <output id="slice-label">z=128: midline</output></label>
+      <input id="slice-slider" type="range" min="0" max="63" step="1" value="33" data-initial-slice="33" data-slice-slider>
+      <nav class="slice-jumps" aria-label="Representative slice jumps">
+        <button type="button" data-slice-jump="33">z=128 <span>midline</span></button>
+<button type="button" data-slice-jump="22">z=91 <span>baseline tumor peak</span></button>
+<button type="button" data-slice-jump="27">z=105 <span>recurrence peak</span></button>
+<button type="button" data-slice-jump="24">z=98 <span>risk peak</span></button>
+      </nav>
+    </div>
+    <div class="viewer-grid">
+
+<figure>
+  <figcaption>T1c baseline post-op / pre-radiotherapy with overlays: cyan baseline tumor, magenta later recurrence label, blue/orange risk</figcaption>
+  <div class="image-stack">
+    <img src="qc_z128_t1c.png" alt="T1c anatomy slice" data-image-channel="t1c">
+    <img src="qc_z128_risk.png" alt="Risk heatmap overlay" class="overlay" data-image-channel="risk" data-overlay="risk">
+    <img src="qc_z128_tumor.png" alt="Baseline tumor overlay" class="overlay" data-image-channel="tumor" data-overlay="tumor">
+    <img src="qc_z128_recurrence.png" alt="Recurrence mask overlay" class="overlay" data-image-channel="recurrence" data-overlay="recurrence">
+  </div>
+</figure>
+
+
+<figure>
+  <figcaption>FLAIR baseline post-op / pre-radiotherapy with overlays: cyan baseline tumor, magenta later recurrence label, blue/orange risk</figcaption>
+  <div class="image-stack">
+    <img src="qc_z128_flair.png" alt="FLAIR anatomy slice" data-image-channel="flair">
+    <img src="qc_z128_risk.png" alt="Risk heatmap overlay" class="overlay" data-image-channel="risk" data-overlay="risk">
+    <img src="qc_z128_tumor.png" alt="Baseline tumor overlay" class="overlay" data-image-channel="tumor" data-overlay="tumor">
+    <img src="qc_z128_recurrence.png" alt="Recurrence mask overlay" class="overlay" data-image-channel="recurrence" data-overlay="recurrence">
+  </div>
+</figure>
+
+    </div>
+  </div>
+  <script type="application/json" id="qc-slice-assets">[{"index": 0, "reason": "sampled axial slice", "t1c": "qc_z000_t1c.png", "flair": "qc_z000_flair.png", "tumor": "qc_z000_tumor.png", "recurrence": "qc_z000_recurrence.png", "risk": "qc_z000_risk.png"}, {"index": 4, "reason": "sampled axial slice", "t1c": "qc_z004_t1c.png", "flair": "qc_z004_flair.png", "tumor": "qc_z004_tumor.png", "recurrence": "qc_z004_recurrence.png", "risk": "qc_z004_risk.png"}, {"index": 8, "reason": "sampled axial slice", "t1c": "qc_z008_t1c.png", "flair": "qc_z008_flair.png", "tumor": "qc_z008_tumor.png", "recurrence": "qc_z008_recurrence.png", "risk": "qc_z008_risk.png"}, {"index": 12, "reason": "sampled axial slice", "t1c": "qc_z012_t1c.png", "flair": "qc_z012_flair.png", "tumor": "qc_z012_tumor.png", "recurrence": "qc_z012_recurrence.png", "risk": "qc_z012_risk.png"}, {"index": 17, "reason": "sampled axial slice", "t1c": "qc_z017_t1c.png", "flair": "qc_z017_flair.png", "tumor": "qc_z017_tumor.png", "recurrence": "qc_z017_recurrence.png", "risk": "qc_z017_risk.png"}, {"index": 21, "reason": "sampled axial slice", "t1c": "qc_z021_t1c.png", "flair": "qc_z021_flair.png", "tumor": "qc_z021_tumor.png", "recurrence": "qc_z021_recurrence.png", "risk": "qc_z021_risk.png"}, {"index": 25, "reason": "sampled axial slice", "t1c": "qc_z025_t1c.png", "flair": "qc_z025_flair.png", "tumor": "qc_z025_tumor.png", "recurrence": "qc_z025_recurrence.png", "risk": "qc_z025_risk.png"}, {"index": 30, "reason": "sampled axial slice", "t1c": "qc_z030_t1c.png", "flair": "qc_z030_flair.png", "tumor": "qc_z030_tumor.png", "recurrence": "qc_z030_recurrence.png", "risk": "qc_z030_risk.png"}, {"index": 34, "reason": "sampled axial slice", "t1c": "qc_z034_t1c.png", "flair": "qc_z034_flair.png", "tumor": "qc_z034_tumor.png", "recurrence": "qc_z034_recurrence.png", "risk": "qc_z034_risk.png"}, {"index": 38, "reason": "sampled axial slice", "t1c": "qc_z038_t1c.png", "flair": "qc_z038_flair.png", "tumor": "qc_z038_tumor.png", "recurrence": "qc_z038_recurrence.png", "risk": "qc_z038_risk.png"}, {"index": 43, "reason": "sampled axial slice", "t1c": "qc_z043_t1c.png", "flair": "qc_z043_flair.png", "tumor": "qc_z043_tumor.png", "recurrence": "qc_z043_recurrence.png", "risk": "qc_z043_risk.png"}, {"index": 47, "reason": "sampled axial slice", "t1c": "qc_z047_t1c.png", "flair": "qc_z047_flair.png", "tumor": "qc_z047_tumor.png", "recurrence": "qc_z047_recurrence.png", "risk": "qc_z047_risk.png"}, {"index": 51, "reason": "sampled axial slice", "t1c": "qc_z051_t1c.png", "flair": "qc_z051_flair.png", "tumor": "qc_z051_tumor.png", "recurrence": "qc_z051_recurrence.png", "risk": "qc_z051_risk.png"}, {"index": 56, "reason": "sampled axial slice", "t1c": "qc_z056_t1c.png", "flair": "qc_z056_flair.png", "tumor": "qc_z056_tumor.png", "recurrence": "qc_z056_recurrence.png", "risk": "qc_z056_risk.png"}, {"index": 60, "reason": "sampled axial slice", "t1c": "qc_z060_t1c.png", "flair": "qc_z060_flair.png", "tumor": "qc_z060_tumor.png", "recurrence": "qc_z060_recurrence.png", "risk": "qc_z060_risk.png"}, {"index": 64, "reason": "sampled axial slice", "t1c": "qc_z064_t1c.png", "flair": "qc_z064_flair.png", "tumor": "qc_z064_tumor.png", "recurrence": "qc_z064_recurrence.png", "risk": "qc_z064_risk.png"}, {"index": 69, "reason": "sampled axial slice", "t1c": "qc_z069_t1c.png", "flair": "qc_z069_flair.png", "tumor": "qc_z069_tumor.png", "recurrence": "qc_z069_recurrence.png", "risk": "qc_z069_risk.png"}, {"index": 73, "reason": "sampled axial slice", "t1c": "qc_z073_t1c.png", "flair": "qc_z073_flair.png", "tumor": "qc_z073_tumor.png", "recurrence": "qc_z073_recurrence.png", "risk": "qc_z073_risk.png"}, {"index": 77, "reason": "sampled axial slice", "t1c": "qc_z077_t1c.png", "flair": "qc_z077_flair.png", "tumor": "qc_z077_tumor.png", "recurrence": "qc_z077_recurrence.png", "risk": "qc_z077_risk.png"}, {"index": 82, "reason": "sampled axial slice", "t1c": "qc_z082_t1c.png", "flair": "qc_z082_flair.png", "tumor": "qc_z082_tumor.png", "recurrence": "qc_z082_recurrence.png", "risk": "qc_z082_risk.png"}, {"index": 86, "reason": "sampled axial slice", "t1c": "qc_z086_t1c.png", "flair": "qc_z086_flair.png", "tumor": "qc_z086_tumor.png", "recurrence": "qc_z086_recurrence.png", "risk": "qc_z086_risk.png"}, {"index": 90, "reason": "sampled axial slice", "t1c": "qc_z090_t1c.png", "flair": "qc_z090_flair.png", "tumor": "qc_z090_tumor.png", "recurrence": "qc_z090_recurrence.png", "risk": "qc_z090_risk.png"}, {"index": 91, "reason": "baseline tumor peak", "t1c": "qc_z091_t1c.png", "flair": "qc_z091_flair.png", "tumor": "qc_z091_tumor.png", "recurrence": "qc_z091_recurrence.png", "risk": "qc_z091_risk.png"}, {"index": 95, "reason": "sampled axial slice", "t1c": "qc_z095_t1c.png", "flair": "qc_z095_flair.png", "tumor": "qc_z095_tumor.png", "recurrence": "qc_z095_recurrence.png", "risk": "qc_z095_risk.png"}, {"index": 98, "reason": "risk peak", "t1c": "qc_z098_t1c.png", "flair": "qc_z098_flair.png", "tumor": "qc_z098_tumor.png", "recurrence": "qc_z098_recurrence.png", "risk": "qc_z098_risk.png"}, {"index": 99, "reason": "sampled axial slice", "t1c": "qc_z099_t1c.png", "flair": "qc_z099_flair.png", "tumor": "qc_z099_tumor.png", "recurrence": "qc_z099_recurrence.png", "risk": "qc_z099_risk.png"}, {"index": 103, "reason": "sampled axial slice", "t1c": "qc_z103_t1c.png", "flair": "qc_z103_flair.png", "tumor": "qc_z103_tumor.png", "recurrence": "qc_z103_recurrence.png", "risk": "qc_z103_risk.png"}, {"index": 105, "reason": "recurrence peak", "t1c": "qc_z105_t1c.png", "flair": "qc_z105_flair.png", "tumor": "qc_z105_tumor.png", "recurrence": "qc_z105_recurrence.png", "risk": "qc_z105_risk.png"}, {"index": 108, "reason": "sampled axial slice", "t1c": "qc_z108_t1c.png", "flair": "qc_z108_flair.png", "tumor": "qc_z108_tumor.png", "recurrence": "qc_z108_recurrence.png", "risk": "qc_z108_risk.png"}, {"index": 112, "reason": "sampled axial slice", "t1c": "qc_z112_t1c.png", "flair": "qc_z112_flair.png", "tumor": "qc_z112_tumor.png", "recurrence": "qc_z112_recurrence.png", "risk": "qc_z112_risk.png"}, {"index": 116, "reason": "sampled axial slice", "t1c": "qc_z116_t1c.png", "flair": "qc_z116_flair.png", "tumor": "qc_z116_tumor.png", "recurrence": "qc_z116_recurrence.png", "risk": "qc_z116_risk.png"}, {"index": 121, "reason": "sampled axial slice", "t1c": "qc_z121_t1c.png", "flair": "qc_z121_flair.png", "tumor": "qc_z121_tumor.png", "recurrence": "qc_z121_recurrence.png", "risk": "qc_z121_risk.png"}, {"index": 125, "reason": "sampled axial slice", "t1c": "qc_z125_t1c.png", "flair": "qc_z125_flair.png", "tumor": "qc_z125_tumor.png", "recurrence": "qc_z125_recurrence.png", "risk": "qc_z125_risk.png"}, {"index": 128, "reason": "midline", "t1c": "qc_z128_t1c.png", "flair": "qc_z128_flair.png", "tumor": "qc_z128_tumor.png", "recurrence": "qc_z128_recurrence.png", "risk": "qc_z128_risk.png"}, {"index": 129, "reason": "sampled axial slice", "t1c": "qc_z129_t1c.png", "flair": "qc_z129_flair.png", "tumor": "qc_z129_tumor.png", "recurrence": "qc_z129_recurrence.png", "risk": "qc_z129_risk.png"}, {"index": 133, "reason": "sampled axial slice", "t1c": "qc_z133_t1c.png", "flair": "qc_z133_flair.png", "tumor": "qc_z133_tumor.png", "recurrence": "qc_z133_recurrence.png", "risk": "qc_z133_risk.png"}, {"index": 138, "reason": "sampled axial slice", "t1c": "qc_z138_t1c.png", "flair": "qc_z138_flair.png", "tumor": "qc_z138_tumor.png", "recurrence": "qc_z138_recurrence.png", "risk": "qc_z138_risk.png"}, {"index": 142, "reason": "sampled axial slice", "t1c": "qc_z142_t1c.png", "flair": "qc_z142_flair.png", "tumor": "qc_z142_tumor.png", "recurrence": "qc_z142_recurrence.png", "risk": "qc_z142_risk.png"}, {"index": 146, "reason": "sampled axial slice", "t1c": "qc_z146_t1c.png", "flair": "qc_z146_flair.png", "tumor": "qc_z146_tumor.png", "recurrence": "qc_z146_recurrence.png", "risk": "qc_z146_risk.png"}, {"index": 151, "reason": "sampled axial slice", "t1c": "qc_z151_t1c.png", "flair": "qc_z151_flair.png", "tumor": "qc_z151_tumor.png", "recurrence": "qc_z151_recurrence.png", "risk": "qc_z151_risk.png"}, {"index": 155, "reason": "sampled axial slice", "t1c": "qc_z155_t1c.png", "flair": "qc_z155_flair.png", "tumor": "qc_z155_tumor.png", "recurrence": "qc_z155_recurrence.png", "risk": "qc_z155_risk.png"}, {"index": 159, "reason": "sampled axial slice", "t1c": "qc_z159_t1c.png", "flair": "qc_z159_flair.png", "tumor": "qc_z159_tumor.png", "recurrence": "qc_z159_recurrence.png", "risk": "qc_z159_risk.png"}, {"index": 164, "reason": "sampled axial slice", "t1c": "qc_z164_t1c.png", "flair": "qc_z164_flair.png", "tumor": "qc_z164_tumor.png", "recurrence": "qc_z164_recurrence.png", "risk": "qc_z164_risk.png"}, {"index": 168, "reason": "sampled axial slice", "t1c": "qc_z168_t1c.png", "flair": "qc_z168_flair.png", "tumor": "qc_z168_tumor.png", "recurrence": "qc_z168_recurrence.png", "risk": "qc_z168_risk.png"}, {"index": 172, "reason": "sampled axial slice", "t1c": "qc_z172_t1c.png", "flair": "qc_z172_flair.png", "tumor": "qc_z172_tumor.png", "recurrence": "qc_z172_recurrence.png", "risk": "qc_z172_risk.png"}, {"index": 177, "reason": "sampled axial slice", "t1c": "qc_z177_t1c.png", "flair": "qc_z177_flair.png", "tumor": "qc_z177_tumor.png", "recurrence": "qc_z177_recurrence.png", "risk": "qc_z177_risk.png"}, {"index": 181, "reason": "sampled axial slice", "t1c": "qc_z181_t1c.png", "flair": "qc_z181_flair.png", "tumor": "qc_z181_tumor.png", "recurrence": "qc_z181_recurrence.png", "risk": "qc_z181_risk.png"}, {"index": 185, "reason": "sampled axial slice", "t1c": "qc_z185_t1c.png", "flair": "qc_z185_flair.png", "tumor": "qc_z185_tumor.png", "recurrence": "qc_z185_recurrence.png", "risk": "qc_z185_risk.png"}, {"index": 190, "reason": "sampled axial slice", "t1c": "qc_z190_t1c.png", "flair": "qc_z190_flair.png", "tumor": "qc_z190_tumor.png", "recurrence": "qc_z190_recurrence.png", "risk": "qc_z190_risk.png"}, {"index": 194, "reason": "sampled axial slice", "t1c": "qc_z194_t1c.png", "flair": "qc_z194_flair.png", "tumor": "qc_z194_tumor.png", "recurrence": "qc_z194_recurrence.png", "risk": "qc_z194_risk.png"}, {"index": 198, "reason": "sampled axial slice", "t1c": "qc_z198_t1c.png", "flair": "qc_z198_flair.png", "tumor": "qc_z198_tumor.png", "recurrence": "qc_z198_recurrence.png", "risk": "qc_z198_risk.png"}, {"index": 203, "reason": "sampled axial slice", "t1c": "qc_z203_t1c.png", "flair": "qc_z203_flair.png", "tumor": "qc_z203_tumor.png", "recurrence": "qc_z203_recurrence.png", "risk": "qc_z203_risk.png"}, {"index": 207, "reason": "sampled axial slice", "t1c": "qc_z207_t1c.png", "flair": "qc_z207_flair.png", "tumor": "qc_z207_tumor.png", "recurrence": "qc_z207_recurrence.png", "risk": "qc_z207_risk.png"}, {"index": 211, "reason": "sampled axial slice", "t1c": "qc_z211_t1c.png", "flair": "qc_z211_flair.png", "tumor": "qc_z211_tumor.png", "recurrence": "qc_z211_recurrence.png", "risk": "qc_z211_risk.png"}, {"index": 216, "reason": "sampled axial slice", "t1c": "qc_z216_t1c.png", "flair": "qc_z216_flair.png", "tumor": "qc_z216_tumor.png", "recurrence": "qc_z216_recurrence.png", "risk": "qc_z216_risk.png"}, {"index": 220, "reason": "sampled axial slice", "t1c": "qc_z220_t1c.png", "flair": "qc_z220_flair.png", "tumor": "qc_z220_tumor.png", "recurrence": "qc_z220_recurrence.png", "risk": "qc_z220_risk.png"}, {"index": 224, "reason": "sampled axial slice", "t1c": "qc_z224_t1c.png", "flair": "qc_z224_flair.png", "tumor": "qc_z224_tumor.png", "recurrence": "qc_z224_recurrence.png", "risk": "qc_z224_risk.png"}, {"index": 229, "reason": "sampled axial slice", "t1c": "qc_z229_t1c.png", "flair": "qc_z229_flair.png", "tumor": "qc_z229_tumor.png", "recurrence": "qc_z229_recurrence.png", "risk": "qc_z229_risk.png"}, {"index": 233, "reason": "sampled axial slice", "t1c": "qc_z233_t1c.png", "flair": "qc_z233_flair.png", "tumor": "qc_z233_tumor.png", "recurrence": "qc_z233_recurrence.png", "risk": "qc_z233_risk.png"}, {"index": 237, "reason": "sampled axial slice", "t1c": "qc_z237_t1c.png", "flair": "qc_z237_flair.png", "tumor": "qc_z237_tumor.png", "recurrence": "qc_z237_recurrence.png", "risk": "qc_z237_risk.png"}, {"index": 242, "reason": "sampled axial slice", "t1c": "qc_z242_t1c.png", "flair": "qc_z242_flair.png", "tumor": "qc_z242_tumor.png", "recurrence": "qc_z242_recurrence.png", "risk": "qc_z242_risk.png"}, {"index": 246, "reason": "sampled axial slice", "t1c": "qc_z246_t1c.png", "flair": "qc_z246_flair.png", "tumor": "qc_z246_tumor.png", "recurrence": "qc_z246_recurrence.png", "risk": "qc_z246_risk.png"}, {"index": 250, "reason": "sampled axial slice", "t1c": "qc_z250_t1c.png", "flair": "qc_z250_flair.png", "tumor": "qc_z250_tumor.png", "recurrence": "qc_z250_recurrence.png", "risk": "qc_z250_risk.png"}, {"index": 255, "reason": "sampled axial slice", "t1c": "qc_z255_t1c.png", "flair": "qc_z255_flair.png", "tumor": "qc_z255_tumor.png", "recurrence": "qc_z255_recurrence.png", "risk": "qc_z255_risk.png"}]</script>
+</section>
+
+</main>
+
+<script>
+const sliceAssets = JSON.parse(document.getElementById('qc-slice-assets').textContent);
+
+for (const input of document.querySelectorAll('[data-opacity-control]')) {
+  const key = input.dataset.opacityControl;
+  const apply = () => {
+    for (const image of document.querySelectorAll(`[data-overlay="${key}"]`)) {
+      image.style.opacity = input.value;
+    }
+  };
+  input.addEventListener('input', apply);
+  apply();
+}
+
+function setSlice(offset) {
+  const bounded = Math.max(0, Math.min(sliceAssets.length - 1, offset));
+  const asset = sliceAssets[bounded];
+  const slider = document.querySelector('[data-slice-slider]');
+  const label = document.getElementById('slice-label');
+  if (slider) {
+    slider.value = String(bounded);
+  }
+  if (label) {
+    label.value = `z=${asset.index}: ${asset.reason}`;
+    label.textContent = `z=${asset.index}: ${asset.reason}`;
+  }
+  for (const image of document.querySelectorAll('[data-image-channel]')) {
+    const channel = image.dataset.imageChannel;
+    if (asset[channel]) {
+      image.src = asset[channel];
+    }
+  }
+  for (const button of document.querySelectorAll('[data-slice-jump]')) {
+    button.classList.toggle('active', Number(button.dataset.sliceJump) === bounded);
+  }
+}
+
+const slider = document.querySelector('[data-slice-slider]');
+if (slider) {
+  slider.addEventListener('input', () => setSlice(Number(slider.value)));
+}
+for (const button of document.querySelectorAll('[data-slice-jump]')) {
+  button.addEventListener('click', () => {
+    setSlice(Number(button.dataset.sliceJump));
+  });
+}
+const initialSliceOffset = Number(slider?.dataset.initialSlice || 0);
+setSlice(initialSliceOffset);
+</script>
+
+</body>
+</html>

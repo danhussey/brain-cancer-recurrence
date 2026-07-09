@@ -6,9 +6,21 @@ from pathlib import Path
 import numpy as np
 
 from glioma_recurrence.case import CaseData
-from glioma_recurrence.constants import CASE_QC_HTML, CASE_QC_SUMMARY_JSON, RESEARCH_ONLY_DISCLAIMER
+from glioma_recurrence.constants import (
+    CASE_QC_HTML,
+    CASE_QC_SUMMARY_JSON,
+    PREPROCESS_QC_HTML,
+    PREPROCESS_QC_SUMMARY_JSON,
+    RESEARCH_ONLY_DISCLAIMER,
+)
 from glioma_recurrence.geometry import Volume
-from glioma_recurrence.reports import select_representative_slices, select_viewer_slices, write_case_qc_report
+from glioma_recurrence.reports import (
+    select_preprocess_slices,
+    select_representative_slices,
+    select_viewer_slices,
+    write_case_qc_report,
+    write_preprocess_qc_report,
+)
 
 
 def make_case(*, with_recurrence: bool = True) -> tuple[CaseData, Volume]:
@@ -23,6 +35,7 @@ def make_case(*, with_recurrence: bool = True) -> tuple[CaseData, Volume]:
     recurrence = np.zeros(shape, dtype=np.uint8)
     recurrence[6:10, 4:8, 5] = 1
     risk = np.zeros(shape, dtype=np.float32)
+    risk[6:10, 4:8, 5] = 1.0
     risk[5:11, 4:9, 6] = 0.9
     case = CaseData(
         patient_id="CASE001",
@@ -46,16 +59,32 @@ def test_case_qc_report_writes_interactive_overlay_assets_and_summary(tmp_path: 
     summary = json.loads((tmp_path / CASE_QC_SUMMARY_JSON).read_text())
 
     assert "Overlay Controls" in report
+    assert "Timepoint Context" in report
+    assert "Post-operative, pre-radiotherapy T1c and FLAIR" in report
+    assert "prediction-time inputs" in report
+    assert "Later follow-up reviewed label mapped back to baseline space" in report
+    assert "training and evaluation only" in report
+    assert "Overlay Key" in report
+    assert "Overlay color key" in report
+    assert "Cyan mask; baseline post-op / pre-radiotherapy" in report
+    assert "Magenta mask; later follow-up label mapped to baseline" in report
+    assert "Blue to orange model output in baseline space" in report
     assert 'data-opacity-control="tumor"' in report
     assert 'data-opacity-control="recurrence"' in report
     assert 'data-opacity-control="risk"' in report
+    assert 'value="4" data-initial-slice="4" data-slice-slider' in report
     assert "Axial Slice Browser" in report
     assert 'data-slice-slider' in report
     assert 'data-slice-jump' in report
     assert 'class="summary-help"' in report
     assert "Useful for marginal or distant recurrence review." in report
-    assert "T1c with overlays" in report
-    assert "FLAIR with overlays" in report
+    assert "Mean risk in recurrence" in report
+    assert "Mean risk outside recurrence" in report
+    assert "Top 1% risk overlap" in report
+    assert "Top 5% risk overlap" in report
+    assert "16 recurrence voxels in 16 high-risk voxels; coverage 100.00%; Dice 1.000" in report
+    assert "T1c baseline post-op / pre-radiotherapy with overlays" in report
+    assert "FLAIR baseline post-op / pre-radiotherapy with overlays" in report
     assert RESEARCH_ONLY_DISCLAIMER in report
     assert summary["patient_id"] == "CASE001"
     assert summary["recurrence_mask_present"] is True
@@ -66,7 +95,18 @@ def test_case_qc_report_writes_interactive_overlay_assets_and_summary(tmp_path: 
         "outside_baseline_tumor_fraction": 1.0,
     }
     assert summary["risk_present"] is True
-    assert summary["risk_stats"]["max"] == 0.9
+    assert summary["risk_stats"]["max"] == 1.0
+    assert summary["prediction_overlap"]["positive_voxels"] == 16
+    assert summary["prediction_overlap"]["evaluated_voxels"] == 960
+    assert summary["prediction_overlap"]["mean_risk_in_recurrence"] == 1.0
+    assert summary["prediction_overlap"]["top_1pct"] == {
+        "fraction": 0.01,
+        "risk_threshold": 1.0,
+        "predicted_voxels": 16,
+        "overlap_voxels": 16,
+        "recurrence_coverage": 1.0,
+        "dice": 1.0,
+    }
     assert summary["viewer_slice_count"] == 8
     assert {item["reason"] for item in summary["selected_slices"]} >= {
         "midline",
@@ -94,6 +134,38 @@ def test_case_qc_report_handles_prediction_without_recurrence_label(tmp_path: Pa
     assert summary["recurrence_voxels"] is None
     assert summary["recurrence_location"] is None
     assert summary["risk_present"] is True
+    assert summary["prediction_overlap"] is None
+
+
+def test_preprocess_qc_report_writes_brain_mask_checkerboard_and_summary(tmp_path: Path):
+    case, _ = make_case()
+    source_flair = Volume(case.flair.data, np.diag([1.0, 1.0, 3.0, 1.0]))
+
+    html_path = write_preprocess_qc_report(
+        case,
+        output_dir=tmp_path,
+        source_t1c=case.t1c,
+        source_flair=source_flair,
+        source_baseline_tumor=case.baseline_tumor_mask,
+    )
+
+    assert html_path == tmp_path / PREPROCESS_QC_HTML
+    assert (tmp_path / PREPROCESS_QC_SUMMARY_JSON).exists()
+    report = html_path.read_text()
+    summary = json.loads((tmp_path / PREPROCESS_QC_SUMMARY_JSON).read_text())
+
+    assert "Preprocessing QC" in report
+    assert "Axial Preprocessing Viewer" in report
+    assert "T1c/FLAIR checkerboard" in report
+    assert 'data-opacity-control="brain"' in report
+    assert 'value="4" data-initial-slice="4" data-slice-slider' in report
+    assert "dedicated skull stripping not yet applied" in report
+    assert summary["preprocessing_steps"]["bias_correction_status"] == "not applied"
+    assert summary["source_geometry"]["flair_matches_t1c_before_preprocess"] is False
+    assert "source FLAIR geometry differed from T1c before preprocessing" in summary["quality_flags"]
+    assert len(list(tmp_path.glob("preprocess_z*_t1c.png"))) == summary["viewer_slice_count"]
+    assert len(list(tmp_path.glob("preprocess_z*_checkerboard.png"))) == summary["viewer_slice_count"]
+    assert len(list(tmp_path.glob("preprocess_z*_brain.png"))) == summary["viewer_slice_count"]
 
 
 def test_representative_slice_selection_is_deterministic_and_unique():
@@ -111,6 +183,21 @@ def test_representative_slice_selection_is_deterministic_and_unique():
         {"index": 4, "reason": "midline"},
         {"index": 1, "reason": "baseline tumor peak"},
         {"index": 7, "reason": "risk peak"},
+    ]
+
+
+def test_preprocess_slice_selection_keeps_midline_and_tumor_peak():
+    brain = np.zeros((8, 8, 8))
+    tumor = np.zeros((8, 8, 8))
+    brain[:, :, 2] = 1
+    tumor[:, :, 6] = 1
+
+    slices = select_preprocess_slices(shape=(8, 8, 8), brain=brain, baseline_tumor=tumor)
+
+    assert slices == [
+        {"index": 4, "reason": "midline"},
+        {"index": 2, "reason": "brain mask peak"},
+        {"index": 6, "reason": "baseline tumor peak"},
     ]
 
 

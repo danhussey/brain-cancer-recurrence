@@ -6,6 +6,21 @@
 [![Status: research prototype](https://img.shields.io/badge/status-research%20prototype-orange)](#research-use)
 [![Data: UCSD-PTGBM](https://img.shields.io/badge/data-UCSD--PTGBM-lightgrey)](https://www.cancerimagingarchive.net/collection/ucsd-ptgbm/)
 
+## See A Real Pipeline Output
+
+Open a static QC example generated from the public UCSD-PTGBM dataset:
+
+| Output | What it shows |
+| --- | --- |
+| [Live example landing page](https://danhussey.github.io/brain-cancer-recurrence/examples/ucsd-ptgbm-real-case/) | Real-data overview with links to the generated reports |
+| [Preprocessing QC](https://danhussey.github.io/brain-cancer-recurrence/examples/ucsd-ptgbm-real-case/public-ucsd-ptgbm-case/preprocess_qc.html) | T1c/FLAIR alignment, brain mask, baseline tumor mask, and preprocessing quality flags |
+| [Prediction and label QC](https://danhussey.github.io/brain-cancer-recurrence/examples/ucsd-ptgbm-real-case/public-ucsd-ptgbm-case/qc_overlay.html) | Baseline anatomy, mapped recurrence label, baseline tumor mask, and voxelwise recurrence-risk overlay |
+| [Case summary JSON](https://danhussey.github.io/brain-cancer-recurrence/examples/ucsd-ptgbm-real-case/public-ucsd-ptgbm-case/qc_summary.json) | Machine-readable counts and risk statistics for the linked prediction report |
+
+![Real UCSD-PTGBM QC preview](docs/examples/ucsd-ptgbm-real-case/real-qc-preview.png)
+
+The committed example uses a neutral case ID and excludes NIfTI volumes, source clinical tables, model files, local paths, and observability logs. It is a research documentation example only, not a clinical-use output.
+
 This repository builds a retrospective research pipeline for predicting where glioma may recur after surgery. It uses post-operative, pre-radiotherapy MRI as the baseline, maps later reviewed recurrence labels back into that baseline space, and produces a voxelwise `recurrence_risk.nii.gz` heatmap plus a human-readable QC report.
 
 The public-data path is MRI-only and uses longitudinal NIfTI images and tumor segmentations. The intended institutional path starts from clinical DICOM, converts to NIfTI for research processing, and later exports stable research outputs back to DICOM.
@@ -27,7 +42,7 @@ flowchart LR
   derived --> preprocess["preprocess: normalize and mask"]
   preprocess --> labels["make-labels: map recurrence to baseline"]
   labels --> train["train / evaluate"]
-  train --> outputs["recurrence_risk.nii.gz, QC report, metrics JSON"]
+  train --> outputs["recurrence_risk.nii.gz, QC HTML reports, metrics JSON"]
 ```
 
 The key safety rule is simple: follow-up scans help define labels, but they are never prediction-time model inputs.
@@ -58,11 +73,15 @@ uv run glioma-risk evaluate --manifest /tmp/glioma-smoke/patients.csv --derived-
 uv run glioma-risk predict --case-dir /tmp/glioma-smoke/derived/SYN002 --model-path /tmp/glioma-smoke/models/tumor-distance.json --output-dir /tmp/glioma-smoke/derived/SYN002
 ```
 
-Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` after the run.
+Open `/tmp/glioma-smoke/derived/SYN002/preprocess_qc.html` to check preprocessing and `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to check labels and predictions.
 
-## QC Report
+## QC Reports
 
-The QC report is a static HTML file written beside each case. It includes a case summary, tooltip explanations, opacity controls, an axial slice browser, and overlays for baseline tumor, recurrence label, and model risk.
+The reports are static HTML files written beside each case.
+
+`preprocess_qc.html` checks the baseline preparation step: geometry, intensity normalization, heuristic brain mask, baseline tumor-mask placement, and a T1c/FLAIR checkerboard for visual registration QC. It also states current limitations such as proxy skull stripping and no N4 bias correction.
+
+`qc_overlay.html` checks labels and predictions: case summary, tooltip explanations, opacity controls, an axial slice browser, and overlays for baseline tumor, recurrence label, and model risk.
 
 ![Synthetic QC report preview](docs/assets/qc-report-preview.png)
 
@@ -170,6 +189,8 @@ brain_mask.nii.gz
 recurrence_risk.nii.gz
 qc_overlay.html
 qc_summary.json
+preprocess_qc.html
+preprocess_qc_summary.json
 ```
 
 ### Observability Artifacts
