@@ -9,7 +9,7 @@ description = "Research pipeline for voxelwise glioma recurrence-risk prediction
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 license = { text = "MIT" }
-authors = [{ name = "Agent-generated research scaffold" }]
+authors = [{ name = "Daniel Hussey" }]
 dependencies = [
   "numpy>=1.26",
   "scipy>=1.11",
