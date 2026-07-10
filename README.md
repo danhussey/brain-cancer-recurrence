@@ -1,4 +1,4 @@
-# Glioma Recurrence Risk Pipeline
+# Voxelwise Glioma Recurrence Modeling from MRI
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![uv](https://img.shields.io/badge/package%20manager-uv-green)](https://docs.astral.sh/uv/)
