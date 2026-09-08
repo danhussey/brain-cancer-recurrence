@@ -56,10 +56,6 @@ flowchart TB
 
 Follow-up scans and recurrence masks define evaluation labels; they are never prediction-time model inputs.
 
-## Portfolio Note
-
-I include this project as high-stakes evaluation engineering: patient-level splits, leakage control, label provenance, calibration, human-readable QC artifacts, and conservative baseline comparison.
-
 ## QC Reports
 
 The reports are static HTML files written beside each case.
