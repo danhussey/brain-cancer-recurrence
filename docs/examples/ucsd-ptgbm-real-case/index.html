@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UCSD-PTGBM Real-Data QC Example</title>
+<title>Real UCSD-PTGBM Pipeline Output</title>
 <style>
   :root {
     color-scheme: light;
@@ -35,9 +35,16 @@
   }
   .preview {
     width: 100%;
-    margin: 24px 0;
     border: 1px solid var(--line);
     background: var(--panel);
+  }
+  figure {
+    margin: 24px 0;
+  }
+  figcaption {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.92rem;
   }
   .links {
     display: grid;
@@ -58,6 +65,15 @@
     color: var(--accent);
     margin-bottom: 4px;
   }
+  a.card.primary {
+    border-color: var(--accent);
+    border-width: 2px;
+  }
+  .artifacts {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+  .artifacts a { color: var(--accent); }
   .note {
     color: var(--muted);
     font-size: 0.95rem;
@@ -66,31 +82,30 @@
 </head>
 <body>
 <main>
-  <h1>UCSD-PTGBM Real-Data QC Example</h1>
+  <h1>Real UCSD-PTGBM pipeline output</h1>
   <p>
-    Static QC pages generated from one public UCSD-PTGBM case, using a neutral
-    committed case ID. The reports show the pipeline outputs: baseline MRI,
-    brain and tumor masks, mapped recurrence label, and voxelwise recurrence-risk
-    overlay.
+    This public case shows what the research pipeline produces from post-operative,
+    pre-radiotherapy MRI: preprocessing QC, a voxelwise recurrence-risk heatmap,
+    and comparison with a later reviewed recurrence label.
   </p>
-  <img class="preview" src="real-qc-preview.png" alt="Preprocessing and prediction QC preview from the real public-data example">
+  <figure>
+    <img class="preview" src="real-qc-preview.png" alt="Baseline MRI beside a recurrence-risk map and later recurrence label from the real public-data example">
+    <figcaption>Baseline T1c at left; model risk and later recurrence at right. The overlay key and overlap result are included in the image.</figcaption>
+  </figure>
   <div class="links">
+    <a class="card primary" href="public-ucsd-ptgbm-case/qc_overlay.html">
+      <strong>Prediction and label QC</strong>
+      Baseline anatomy, recurrence label, tumor mask, and recurrence-risk heatmap.
+    </a>
     <a class="card" href="public-ucsd-ptgbm-case/preprocess_qc.html">
       <strong>Preprocessing QC</strong>
       T1c/FLAIR alignment, brain mask, baseline tumor mask, and quality flags.
     </a>
-    <a class="card" href="public-ucsd-ptgbm-case/qc_overlay.html">
-      <strong>Prediction QC</strong>
-      Baseline anatomy, recurrence label, tumor mask, and recurrence-risk heatmap.
-    </a>
-    <a class="card" href="public-ucsd-ptgbm-case/qc_summary.json">
-      <strong>Summary JSON</strong>
-      Machine-readable case summary for the linked prediction QC report.
-    </a>
   </div>
+  <p class="artifacts">Machine-readable summaries: <a href="public-ucsd-ptgbm-case/qc_summary.json">prediction and label JSON</a> and <a href="public-ucsd-ptgbm-case/preprocess_qc_summary.json">preprocessing JSON</a>.</p>
   <p class="note">
-    Research documentation only. This is not a clinical-use output, treatment
-    recommendation, dose recommendation, boost-region selection, or patient-management tool.
+    Public data, neutral case ID, and static report assets only. Research documentation;
+    not for clinical use or patient management.
   </p>
 </main>
 </body>

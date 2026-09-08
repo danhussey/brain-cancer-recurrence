@@ -20,26 +20,30 @@ from .geometry import Volume
 
 MAX_BROWSER_SLICES = 64
 
+PREPROCESS_RESEARCH_ONLY_DISCLAIMER = (
+    "Research use only. This report checks preprocessing outputs and is not a clinical-use output."
+)
+
 SUMMARY_FIELD_HELP = {
     "Shape": "Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions.",
-    "Spacing mm": "Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale.",
+    "Spacing (mm)": "Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale.",
     "Brain voxels": "Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy.",
     "Baseline tumor voxels": "Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region.",
-    "Recurrence mask present": "Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible.",
+    "Recurrence label available": "Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible.",
     "Recurrence voxels": "Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance.",
     "Recurrence inside baseline tumor": "Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases.",
     "Recurrence outside baseline tumor": "Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review.",
-    "Risk map present": "Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC.",
+    "Risk map available": "Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC.",
     "Mean risk in recurrence": "Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred.",
     "Mean risk outside recurrence": "Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain.",
-    "Top 1% risk overlap": "Overlap between the recurrence label and the highest-risk 1% of evaluated brain voxels, reported as recurrence coverage and Dice.",
-    "Top 5% risk overlap": "Overlap between the recurrence label and the highest-risk 5% of evaluated brain voxels, reported as recurrence coverage and Dice.",
+    "Highest-risk 1% of brain voxels": "Share of recurrence voxels contained in the highest-risk 1% of evaluated brain voxels, with Dice as a spatial-overlap measure.",
+    "Highest-risk 5% of brain voxels": "Share of recurrence voxels contained in the highest-risk 5% of evaluated brain voxels, with Dice as a spatial-overlap measure.",
     "Viewer slices": "Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here.",
 }
 
 PREPROCESS_FIELD_HELP = {
     "Shape": "Baseline T1c voxel grid after preprocessing. All model inputs should share this grid.",
-    "Spacing mm": "Physical voxel spacing after preprocessing. Useful for catching unexpected anisotropy or scaling errors.",
+    "Spacing (mm)": "Physical voxel spacing after preprocessing. Useful for catching unexpected anisotropy or scaling errors.",
     "Brain mask voxels": "Number of voxels retained by the current brain-mask proxy. Useful for spotting failed skull stripping or empty anatomy.",
     "Brain mask fraction": "Fraction of the whole volume inside the brain mask. Very small or very large values usually need review.",
     "Baseline tumor voxels": "Baseline tumor-mask volume after nearest-neighbor resampling to T1c space.",
@@ -108,7 +112,7 @@ def write_case_qc_report(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QC Overlay {html.escape(case.patient_id)}</title>
+<title>Prediction and label QC {html.escape(case.patient_id)}</title>
 {_report_css()}
 </head>
 <body>
@@ -251,7 +255,7 @@ def build_preprocess_qc_summary(
     )
     return {
         "patient_id": case.patient_id,
-        "research_only": RESEARCH_ONLY_DISCLAIMER,
+        "research_only": PREPROCESS_RESEARCH_ONLY_DISCLAIMER,
         "shape": list(case.t1c.shape),
         "spacing_mm": [round(float(value), 6) for value in case.t1c.spacing],
         "brain_mask_voxels": brain_voxels,
@@ -680,17 +684,17 @@ def _interactive_report_body(summary: dict[str, object], assets: list[dict[str, 
     assets_json = _json_script_payload(assets)
     return f"""
 <header>
-  <p class="eyebrow">Research QC Overlay</p>
+  <p class="eyebrow">Prediction and label QC</p>
   <h1>{html.escape(patient_id)}</h1>
   <p class="disclaimer">{html.escape(RESEARCH_ONLY_DISCLAIMER)}</p>
 </header>
-<section aria-labelledby="summary-heading">
-  <h2 id="summary-heading">Case Summary</h2>
-  {summary_table}
-</section>
 <section aria-labelledby="timepoint-heading">
   <h2 id="timepoint-heading">Timepoint Context</h2>
   {_timepoint_context()}
+</section>
+<section aria-labelledby="summary-heading">
+  <h2 id="summary-heading">Case Summary</h2>
+  {summary_table}
 </section>
 <section aria-labelledby="controls-heading">
   <h2 id="controls-heading">Overlay Controls</h2>
@@ -733,7 +737,7 @@ def _preprocess_interactive_report_body(summary: dict[str, object], assets: list
 <header>
   <p class="eyebrow">Preprocessing QC</p>
   <h1>{html.escape(patient_id)}</h1>
-  <p class="disclaimer">{html.escape(RESEARCH_ONLY_DISCLAIMER)}</p>
+  <p class="disclaimer">{html.escape(PREPROCESS_RESEARCH_ONLY_DISCLAIMER)}</p>
 </header>
 <section aria-labelledby="preprocess-summary-heading">
   <h2 id="preprocess-summary-heading">Preprocessing Summary</h2>
@@ -749,6 +753,7 @@ def _preprocess_interactive_report_body(summary: dict[str, object], assets: list
 </section>
 <section aria-labelledby="preprocess-slice-heading">
   <h2 id="preprocess-slice-heading">Axial Preprocessing Viewer</h2>
+  <p class="section-intro"><strong>T1c/FLAIR checkerboard:</strong> alternating image tiles should preserve continuous anatomy across their edges; visible jumps suggest misalignment.</p>
   <div class="slice-browser">
     <div class="slice-controls">
       <label for="slice-slider">Slice <output id="slice-label">z={int(initial_asset["index"])}: {html.escape(str(initial_asset["reason"]))}</output></label>
@@ -760,7 +765,7 @@ def _preprocess_interactive_report_body(summary: dict[str, object], assets: list
     <div class="viewer-grid">
       {_preprocess_viewer_stack("T1c", "t1c", initial_asset)}
       {_preprocess_viewer_stack("FLAIR", "flair", initial_asset)}
-      {_preprocess_viewer_stack("T1c/FLAIR checkerboard", "checkerboard", initial_asset)}
+      {_preprocess_viewer_stack("T1c/FLAIR alignment checkerboard", "checkerboard", initial_asset)}
     </div>
   </div>
   <script type="application/json" id="qc-slice-assets">{assets_json}</script>
@@ -790,20 +795,16 @@ def _timepoint_context() -> str:
     return """
   <div class="timepoint-context">
     <div>
-      <strong>Baseline MRI</strong>
-      <span>Post-operative, pre-radiotherapy T1c and FLAIR. These are prediction-time inputs.</span>
+      <strong>Baseline inputs</strong>
+      <span>Post-operative, pre-radiotherapy T1c, FLAIR, and tumor mask. These are the prediction-time inputs.</span>
     </div>
     <div>
-      <strong>Baseline tumor mask</strong>
-      <span>Baseline-space tumor mask used as a prediction-time location feature.</span>
+      <strong>Later outcome label</strong>
+      <span>Reviewed recurrence on follow-up MRI, mapped to baseline space for training and evaluation only.</span>
     </div>
     <div>
-      <strong>Recurrence mask</strong>
-      <span>Later follow-up reviewed label mapped back to baseline space. It is used for training and evaluation only.</span>
-    </div>
-    <div>
-      <strong>Risk heatmap</strong>
-      <span>Model output in baseline space, not a treatment or dose recommendation.</span>
+      <strong>Model output</strong>
+      <span>Voxelwise recurrence-risk heatmap in baseline space. It is not a treatment or dose recommendation.</span>
     </div>
   </div>
 """
@@ -847,7 +848,7 @@ def _viewer_stack(label: str, base_key: str, asset: dict[str, object]) -> str:
     escaped_label = html.escape(label)
     return f"""
 <figure>
-  <figcaption>{escaped_label} baseline post-op / pre-radiotherapy with overlays: cyan baseline tumor, magenta later recurrence label, blue/orange risk</figcaption>
+  <figcaption>Baseline {escaped_label}</figcaption>
   <div class="image-stack">
     <img src="{html.escape(str(asset[base_key]))}" alt="{escaped_label} anatomy slice" data-image-channel="{html.escape(base_key)}">
     <img src="{html.escape(str(asset["risk"]))}" alt="Risk heatmap overlay" class="overlay" data-image-channel="risk" data-overlay="risk">
@@ -875,10 +876,10 @@ def _preprocess_viewer_stack(label: str, base_key: str, asset: dict[str, object]
 def _summary_table(summary: dict[str, object]) -> str:
     recurrence_location = summary.get("recurrence_location")
     if isinstance(recurrence_location, dict):
-        recurrence_inside = str(recurrence_location["inside_baseline_tumor_voxels"])
+        recurrence_inside = _format_count(recurrence_location["inside_baseline_tumor_voxels"])
         recurrence_outside = (
-            f'{recurrence_location["outside_baseline_tumor_voxels"]} '
-            f'({recurrence_location["outside_baseline_tumor_fraction"]:.2%})'
+            f'{_format_count(recurrence_location["outside_baseline_tumor_voxels"])} '
+            f'({recurrence_location["outside_baseline_tumor_fraction"]:.1%})'
         )
     else:
         recurrence_inside = "not available"
@@ -896,19 +897,19 @@ def _summary_table(summary: dict[str, object]) -> str:
         top_5pct_overlap = "not available"
     rows = [
         ("Shape", " x ".join(str(value) for value in summary["shape"])),
-        ("Spacing mm", " / ".join(str(value) for value in summary["spacing_mm"])),
-        ("Brain voxels", str(summary["brain_voxels"])),
-        ("Baseline tumor voxels", str(summary["baseline_tumor_voxels"])),
-        ("Recurrence mask present", str(summary["recurrence_mask_present"])),
-        ("Recurrence voxels", "not available" if summary["recurrence_voxels"] is None else str(summary["recurrence_voxels"])),
+        ("Spacing (mm)", " / ".join(str(value) for value in summary["spacing_mm"])),
+        ("Brain voxels", _format_count(summary["brain_voxels"])),
+        ("Baseline tumor voxels", _format_count(summary["baseline_tumor_voxels"])),
+        ("Recurrence label available", _format_yes_no(summary["recurrence_mask_present"])),
+        ("Recurrence voxels", _format_count(summary["recurrence_voxels"])),
         ("Recurrence inside baseline tumor", recurrence_inside),
         ("Recurrence outside baseline tumor", recurrence_outside),
-        ("Risk map present", str(summary["risk_present"])),
+        ("Risk map available", _format_yes_no(summary["risk_present"])),
         ("Mean risk in recurrence", mean_risk_in_recurrence),
         ("Mean risk outside recurrence", mean_risk_outside_recurrence),
-        ("Top 1% risk overlap", top_1pct_overlap),
-        ("Top 5% risk overlap", top_5pct_overlap),
-        ("Viewer slices", str(summary["viewer_slice_count"])),
+        ("Highest-risk 1% of brain voxels", top_1pct_overlap),
+        ("Highest-risk 5% of brain voxels", top_5pct_overlap),
+        ("Viewer slices", _format_count(summary["viewer_slice_count"])),
     ]
     body = "\n".join(
         f"<tr><th scope=\"row\">{_summary_label(label)}</th><td>{html.escape(value)}</td></tr>"
@@ -923,18 +924,35 @@ def _format_optional_float(value: object) -> str:
     return "not available"
 
 
+def _format_count(value: object) -> str:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return f"{value:,}"
+    return "not available"
+
+
+def _format_yes_no(value: object) -> str:
+    if isinstance(value, (bool, np.bool_)):
+        return "Yes" if bool(value) else "No"
+    return "not available"
+
+
+def _format_optional_yes_no(value: object) -> str:
+    if value is None:
+        return "Not recorded"
+    return _format_yes_no(value)
+
+
 def _format_prediction_overlap(value: object) -> str:
     if not isinstance(value, dict):
         return "not available"
     overlap = value.get("overlap_voxels")
-    predicted = value.get("predicted_voxels")
     coverage = value.get("recurrence_coverage")
     dice_value = value.get("dice")
-    if not isinstance(overlap, int) or not isinstance(predicted, int):
+    if not isinstance(overlap, int):
         return "not available"
     coverage_text = "not available" if not isinstance(coverage, (float, int)) else f"{float(coverage):.2%}"
     dice_text = "not available" if not isinstance(dice_value, (float, int)) else f"{float(dice_value):.3f}"
-    return f"{overlap} recurrence voxels in {predicted} high-risk voxels; coverage {coverage_text}; Dice {dice_text}"
+    return f"Captured {coverage_text} of recurrence ({overlap:,} voxels); Dice {dice_text}"
 
 
 def _summary_label(label: str) -> str:
@@ -951,19 +969,21 @@ def _preprocess_summary_table(summary: dict[str, object]) -> str:
     source_flair_matches = source_geometry.get("flair_matches_t1c_before_preprocess")
     rows = [
         ("Shape", " x ".join(str(value) for value in summary["shape"])),
-        ("Spacing mm", " / ".join(str(value) for value in summary["spacing_mm"])),
-        ("Brain mask voxels", str(summary["brain_mask_voxels"])),
+        ("Spacing (mm)", " / ".join(str(value) for value in summary["spacing_mm"])),
+        ("Brain mask voxels", _format_count(summary["brain_mask_voxels"])),
         ("Brain mask fraction", f'{float(summary["brain_mask_fraction"]):.2%}'),
-        ("Baseline tumor voxels", str(summary["baseline_tumor_voxels"])),
+        ("Baseline tumor voxels", _format_count(summary["baseline_tumor_voxels"])),
         ("Baseline tumor fraction", f'{float(summary["baseline_tumor_fraction_of_brain"]):.2%} of brain mask'),
         ("Skull stripping", str(steps.get("skull_stripping_status", "not recorded"))),
         ("Bias correction", str(steps.get("bias_correction_status", "not recorded"))),
         ("FLAIR alignment", str(steps.get("flair_alignment", "not recorded"))),
         (
             "Registration QC",
-            f'{steps.get("visual_registration_qc", "not recorded")}; source FLAIR matched T1c before preprocessing: {source_flair_matches}',
+            f'{steps.get("visual_registration_qc", "not recorded")}. '
+            "Source FLAIR matched T1c geometry before preprocessing: "
+            f"{_format_optional_yes_no(source_flair_matches)}.",
         ),
-        ("Viewer slices", str(summary["viewer_slice_count"])),
+        ("Viewer slices", _format_count(summary["viewer_slice_count"])),
     ]
     body = "\n".join(
         f"<tr><th scope=\"row\">{_preprocess_summary_label(label)}</th><td>{html.escape(value)}</td></tr>"
@@ -1007,10 +1027,14 @@ def _summary_only_report_body(summary: dict[str, object]) -> str:
     )
     return f"""
 <header>
-  <p class="eyebrow">Research QC Overlay</p>
+  <p class="eyebrow">Prediction and label QC</p>
   <h1>{html.escape(str(summary["patient_id"]))}</h1>
   <p class="disclaimer">{html.escape(RESEARCH_ONLY_DISCLAIMER)}</p>
 </header>
+<section>
+  <h2>Timepoint Context</h2>
+  {_timepoint_context()}
+</section>
 <section>
   <h2>Case Summary</h2>
   {_summary_table(summary)}
@@ -1027,7 +1051,7 @@ def _preprocess_summary_only_report_body(summary: dict[str, object]) -> str:
 <header>
   <p class="eyebrow">Preprocessing QC</p>
   <h1>{html.escape(str(summary["patient_id"]))}</h1>
-  <p class="disclaimer">{html.escape(RESEARCH_ONLY_DISCLAIMER)}</p>
+  <p class="disclaimer">{html.escape(PREPROCESS_RESEARCH_ONLY_DISCLAIMER)}</p>
 </header>
 <section>
   <h2>Preprocessing Summary</h2>
@@ -1050,6 +1074,7 @@ h1 { margin: 0 0 8px; font-size: 30px; }
 h2 { margin: 0 0 12px; font-size: 19px; }
 h3 { margin: 0 0 12px; font-size: 16px; }
 .disclaimer { max-width: 860px; padding: 10px 12px; background: #fff3cd; border-left: 4px solid #b58100; }
+.section-intro { max-width: 860px; margin: -2px 0 12px; color: #444; font-size: 14px; line-height: 1.45; }
 table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; font-size: 14px; }
 th { width: 220px; color: #333; }
@@ -1154,6 +1179,16 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 .image-stack { position: relative; width: 100%; background: #000; }
 .image-stack img { display: block; width: 100%; height: auto; }
 .image-stack .overlay { position: absolute; inset: 0; pointer-events: none; }
+@media (max-width: 640px) {
+  main { padding: 20px; }
+  th { width: 46%; }
+  .summary-help::after {
+    position: fixed;
+    inset: auto 24px 24px;
+    width: auto;
+    transform: none;
+  }
+}
 </style>
 """
 

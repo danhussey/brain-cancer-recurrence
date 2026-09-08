@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QC Overlay public-ucsd-ptgbm-case</title>
+<title>Prediction and label QC public-ucsd-ptgbm-case</title>
 
 <style>
 :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -15,6 +15,7 @@ h1 { margin: 0 0 8px; font-size: 30px; }
 h2 { margin: 0 0 12px; font-size: 19px; }
 h3 { margin: 0 0 12px; font-size: 16px; }
 .disclaimer { max-width: 860px; padding: 10px 12px; background: #fff3cd; border-left: 4px solid #b58100; }
+.section-intro { max-width: 860px; margin: -2px 0 12px; color: #444; font-size: 14px; line-height: 1.45; }
 table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; font-size: 14px; }
 th { width: 220px; color: #333; }
@@ -119,6 +120,16 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 .image-stack { position: relative; width: 100%; background: #000; }
 .image-stack img { display: block; width: 100%; height: auto; }
 .image-stack .overlay { position: absolute; inset: 0; pointer-events: none; }
+@media (max-width: 640px) {
+  main { padding: 20px; }
+  th { width: 46%; }
+  .summary-help::after {
+    position: fixed;
+    inset: auto 24px 24px;
+    width: auto;
+    transform: none;
+  }
+}
 </style>
 
 </head>
@@ -126,49 +137,45 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 <main>
 
 <header>
-  <p class="eyebrow">Research QC Overlay</p>
+  <p class="eyebrow">Prediction and label QC</p>
   <h1>public-ucsd-ptgbm-case</h1>
   <p class="disclaimer">Research use only. This output is a recurrence-risk heatmap in baseline space and is not a clinical dose recommendation.</p>
 </header>
-<section aria-labelledby="summary-heading">
-  <h2 id="summary-heading">Case Summary</h2>
-  <table><tr><th scope="row"><span class="summary-label-text">Shape</span><span class="summary-help" tabindex="0" role="img" aria-label="Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions." data-tooltip="Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions.">i</span></th><td>256 x 256 x 256</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Spacing mm</span><span class="summary-help" tabindex="0" role="img" aria-label="Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale." data-tooltip="Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale.">i</span></th><td>1.0 / 1.0 / 1.0</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Brain voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy." data-tooltip="Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy.">i</span></th><td>1485184</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Baseline tumor voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region." data-tooltip="Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region.">i</span></th><td>5764</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Recurrence mask present</span><span class="summary-help" tabindex="0" role="img" aria-label="Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible." data-tooltip="Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible.">i</span></th><td>True</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Recurrence voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance." data-tooltip="Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance.">i</span></th><td>592</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Recurrence inside baseline tumor</span><span class="summary-help" tabindex="0" role="img" aria-label="Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases." data-tooltip="Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases.">i</span></th><td>458</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Recurrence outside baseline tumor</span><span class="summary-help" tabindex="0" role="img" aria-label="Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review." data-tooltip="Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review.">i</span></th><td>134 (22.64%)</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Risk map present</span><span class="summary-help" tabindex="0" role="img" aria-label="Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC." data-tooltip="Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC.">i</span></th><td>True</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Mean risk in recurrence</span><span class="summary-help" tabindex="0" role="img" aria-label="Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred." data-tooltip="Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred.">i</span></th><td>0.891</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Mean risk outside recurrence</span><span class="summary-help" tabindex="0" role="img" aria-label="Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain." data-tooltip="Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain.">i</span></th><td>0.294</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Top 1% risk overlap</span><span class="summary-help" tabindex="0" role="img" aria-label="Overlap between the recurrence label and the highest-risk 1% of evaluated brain voxels, reported as recurrence coverage and Dice." data-tooltip="Overlap between the recurrence label and the highest-risk 1% of evaluated brain voxels, reported as recurrence coverage and Dice.">i</span></th><td>56 recurrence voxels in 14853 high-risk voxels; coverage 9.46%; Dice 0.007</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Top 5% risk overlap</span><span class="summary-help" tabindex="0" role="img" aria-label="Overlap between the recurrence label and the highest-risk 5% of evaluated brain voxels, reported as recurrence coverage and Dice." data-tooltip="Overlap between the recurrence label and the highest-risk 5% of evaluated brain voxels, reported as recurrence coverage and Dice.">i</span></th><td>477 recurrence voxels in 74260 high-risk voxels; coverage 80.57%; Dice 0.013</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Viewer slices</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here." data-tooltip="Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here.">i</span></th><td>64</td></tr></table>
-</section>
 <section aria-labelledby="timepoint-heading">
   <h2 id="timepoint-heading">Timepoint Context</h2>
 
   <div class="timepoint-context">
     <div>
-      <strong>Baseline MRI</strong>
-      <span>Post-operative, pre-radiotherapy T1c and FLAIR. These are prediction-time inputs.</span>
+      <strong>Baseline inputs</strong>
+      <span>Post-operative, pre-radiotherapy T1c, FLAIR, and tumor mask. These are the prediction-time inputs.</span>
     </div>
     <div>
-      <strong>Baseline tumor mask</strong>
-      <span>Baseline-space tumor mask used as a prediction-time location feature.</span>
+      <strong>Later outcome label</strong>
+      <span>Reviewed recurrence on follow-up MRI, mapped to baseline space for training and evaluation only.</span>
     </div>
     <div>
-      <strong>Recurrence mask</strong>
-      <span>Later follow-up reviewed label mapped back to baseline space. It is used for training and evaluation only.</span>
-    </div>
-    <div>
-      <strong>Risk heatmap</strong>
-      <span>Model output in baseline space, not a treatment or dose recommendation.</span>
+      <strong>Model output</strong>
+      <span>Voxelwise recurrence-risk heatmap in baseline space. It is not a treatment or dose recommendation.</span>
     </div>
   </div>
 
+</section>
+<section aria-labelledby="summary-heading">
+  <h2 id="summary-heading">Case Summary</h2>
+  <table><tr><th scope="row"><span class="summary-label-text">Shape</span><span class="summary-help" tabindex="0" role="img" aria-label="Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions." data-tooltip="Voxel grid dimensions in x, y, and z. Useful for catching unexpected crops or wrong image dimensions.">i</span></th><td>256 x 256 x 256</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Spacing (mm)</span><span class="summary-help" tabindex="0" role="img" aria-label="Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale." data-tooltip="Physical voxel spacing. Useful for checking that registration and resampling preserved real-world scale.">i</span></th><td>1.0 / 1.0 / 1.0</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Brain voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy." data-tooltip="Number of voxels inside the brain mask. Useful for spotting failed masking or empty anatomy.">i</span></th><td>1,485,184</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Baseline tumor voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region." data-tooltip="Tumor-mask volume at the prediction baseline. Useful because residual tumor is an expected high-risk region.">i</span></th><td>5,764</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence label available</span><span class="summary-help" tabindex="0" role="img" aria-label="Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible." data-tooltip="Whether this case has a mapped follow-up recurrence label. Useful for knowing if label QC is possible.">i</span></th><td>Yes</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance." data-tooltip="Total recurrence-label volume in baseline space. Useful for checking label size and class imbalance.">i</span></th><td>592</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence inside baseline tumor</span><span class="summary-help" tabindex="0" role="img" aria-label="Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases." data-tooltip="Recurrence voxels overlapping the baseline tumor mask. Useful for separating obvious residual-tumor recurrence from harder cases.">i</span></th><td>458</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Recurrence outside baseline tumor</span><span class="summary-help" tabindex="0" role="img" aria-label="Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review." data-tooltip="Recurrence voxels outside the baseline tumor mask. Useful for marginal or distant recurrence review.">i</span></th><td>134 (22.6%)</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Risk map available</span><span class="summary-help" tabindex="0" role="img" aria-label="Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC." data-tooltip="Whether a model prediction was loaded into the report. Useful for distinguishing preprocessing QC from prediction QC.">i</span></th><td>Yes</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Mean risk in recurrence</span><span class="summary-help" tabindex="0" role="img" aria-label="Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred." data-tooltip="Average predicted risk inside the mapped recurrence label. Useful as a quick signal of whether the risk map is elevated where recurrence occurred.">i</span></th><td>0.891</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Mean risk outside recurrence</span><span class="summary-help" tabindex="0" role="img" aria-label="Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain." data-tooltip="Average predicted risk in brain voxels outside the recurrence label. Useful for comparing recurrence regions against the surrounding brain.">i</span></th><td>0.294</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Highest-risk 1% of brain voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Share of recurrence voxels contained in the highest-risk 1% of evaluated brain voxels, with Dice as a spatial-overlap measure." data-tooltip="Share of recurrence voxels contained in the highest-risk 1% of evaluated brain voxels, with Dice as a spatial-overlap measure.">i</span></th><td>Captured 9.46% of recurrence (56 voxels); Dice 0.007</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Highest-risk 5% of brain voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Share of recurrence voxels contained in the highest-risk 5% of evaluated brain voxels, with Dice as a spatial-overlap measure." data-tooltip="Share of recurrence voxels contained in the highest-risk 5% of evaluated brain voxels, with Dice as a spatial-overlap measure.">i</span></th><td>Captured 80.57% of recurrence (477 voxels); Dice 0.013</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Viewer slices</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here." data-tooltip="Number of axial slices rendered into the static viewer. Useful for knowing how much of the volume can be inspected here.">i</span></th><td>64</td></tr></table>
 </section>
 <section aria-labelledby="controls-heading">
   <h2 id="controls-heading">Overlay Controls</h2>
@@ -202,7 +209,7 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
     <div class="viewer-grid">
 
 <figure>
-  <figcaption>T1c baseline post-op / pre-radiotherapy with overlays: cyan baseline tumor, magenta later recurrence label, blue/orange risk</figcaption>
+  <figcaption>Baseline T1c</figcaption>
   <div class="image-stack">
     <img src="qc_z128_t1c.png" alt="T1c anatomy slice" data-image-channel="t1c">
     <img src="qc_z128_risk.png" alt="Risk heatmap overlay" class="overlay" data-image-channel="risk" data-overlay="risk">
@@ -213,7 +220,7 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 
 
 <figure>
-  <figcaption>FLAIR baseline post-op / pre-radiotherapy with overlays: cyan baseline tumor, magenta later recurrence label, blue/orange risk</figcaption>
+  <figcaption>Baseline FLAIR</figcaption>
   <div class="image-stack">
     <img src="qc_z128_flair.png" alt="FLAIR anatomy slice" data-image-channel="flair">
     <img src="qc_z128_risk.png" alt="Risk heatmap overlay" class="overlay" data-image-channel="risk" data-overlay="risk">

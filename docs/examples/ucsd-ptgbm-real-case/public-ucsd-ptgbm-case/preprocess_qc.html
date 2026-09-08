@@ -15,6 +15,7 @@ h1 { margin: 0 0 8px; font-size: 30px; }
 h2 { margin: 0 0 12px; font-size: 19px; }
 h3 { margin: 0 0 12px; font-size: 16px; }
 .disclaimer { max-width: 860px; padding: 10px 12px; background: #fff3cd; border-left: 4px solid #b58100; }
+.section-intro { max-width: 860px; margin: -2px 0 12px; color: #444; font-size: 14px; line-height: 1.45; }
 table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { padding: 8px 10px; border-bottom: 1px solid #ddd; text-align: left; font-size: 14px; }
 th { width: 220px; color: #333; }
@@ -119,6 +120,16 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 .image-stack { position: relative; width: 100%; background: #000; }
 .image-stack img { display: block; width: 100%; height: auto; }
 .image-stack .overlay { position: absolute; inset: 0; pointer-events: none; }
+@media (max-width: 640px) {
+  main { padding: 20px; }
+  th { width: 46%; }
+  .summary-help::after {
+    position: fixed;
+    inset: auto 24px 24px;
+    width: auto;
+    transform: none;
+  }
+}
 </style>
 
 </head>
@@ -128,20 +139,20 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 <header>
   <p class="eyebrow">Preprocessing QC</p>
   <h1>public-ucsd-ptgbm-case</h1>
-  <p class="disclaimer">Research use only. This output is a recurrence-risk heatmap in baseline space and is not a clinical dose recommendation.</p>
+  <p class="disclaimer">Research use only. This report checks preprocessing outputs and is not a clinical-use output.</p>
 </header>
 <section aria-labelledby="preprocess-summary-heading">
   <h2 id="preprocess-summary-heading">Preprocessing Summary</h2>
   <table><tr><th scope="row"><span class="summary-label-text">Shape</span><span class="summary-help" tabindex="0" role="img" aria-label="Baseline T1c voxel grid after preprocessing. All model inputs should share this grid." data-tooltip="Baseline T1c voxel grid after preprocessing. All model inputs should share this grid.">i</span></th><td>256 x 256 x 256</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Spacing mm</span><span class="summary-help" tabindex="0" role="img" aria-label="Physical voxel spacing after preprocessing. Useful for catching unexpected anisotropy or scaling errors." data-tooltip="Physical voxel spacing after preprocessing. Useful for catching unexpected anisotropy or scaling errors.">i</span></th><td>1.0 / 1.0 / 1.0</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Brain mask voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of voxels retained by the current brain-mask proxy. Useful for spotting failed skull stripping or empty anatomy." data-tooltip="Number of voxels retained by the current brain-mask proxy. Useful for spotting failed skull stripping or empty anatomy.">i</span></th><td>1485184</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Spacing (mm)</span><span class="summary-help" tabindex="0" role="img" aria-label="Physical voxel spacing after preprocessing. Useful for catching unexpected anisotropy or scaling errors." data-tooltip="Physical voxel spacing after preprocessing. Useful for catching unexpected anisotropy or scaling errors.">i</span></th><td>1.0 / 1.0 / 1.0</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Brain mask voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of voxels retained by the current brain-mask proxy. Useful for spotting failed skull stripping or empty anatomy." data-tooltip="Number of voxels retained by the current brain-mask proxy. Useful for spotting failed skull stripping or empty anatomy.">i</span></th><td>1,485,184</td></tr>
 <tr><th scope="row"><span class="summary-label-text">Brain mask fraction</span><span class="summary-help" tabindex="0" role="img" aria-label="Fraction of the whole volume inside the brain mask. Very small or very large values usually need review." data-tooltip="Fraction of the whole volume inside the brain mask. Very small or very large values usually need review.">i</span></th><td>8.85%</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Baseline tumor voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Baseline tumor-mask volume after nearest-neighbor resampling to T1c space." data-tooltip="Baseline tumor-mask volume after nearest-neighbor resampling to T1c space.">i</span></th><td>5764</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Baseline tumor voxels</span><span class="summary-help" tabindex="0" role="img" aria-label="Baseline tumor-mask volume after nearest-neighbor resampling to T1c space." data-tooltip="Baseline tumor-mask volume after nearest-neighbor resampling to T1c space.">i</span></th><td>5,764</td></tr>
 <tr><th scope="row"><span class="summary-label-text">Baseline tumor fraction</span><span class="summary-help" tabindex="0" role="img" aria-label="Baseline tumor voxels divided by brain-mask voxels. Useful for catching missing or implausibly large masks." data-tooltip="Baseline tumor voxels divided by brain-mask voxels. Useful for catching missing or implausibly large masks.">i</span></th><td>0.39% of brain mask</td></tr>
 <tr><th scope="row"><span class="summary-label-text">Skull stripping</span><span class="summary-help" tabindex="0" role="img" aria-label="Current skull-stripping status. V1 uses a heuristic brain mask; dedicated tools should be added before serious cohort analysis." data-tooltip="Current skull-stripping status. V1 uses a heuristic brain mask; dedicated tools should be added before serious cohort analysis.">i</span></th><td>proxy-only; dedicated skull stripping not yet applied</td></tr>
 <tr><th scope="row"><span class="summary-label-text">Bias correction</span><span class="summary-help" tabindex="0" role="img" aria-label="Current bias-field correction status. This report makes the missing step visible instead of implying it happened." data-tooltip="Current bias-field correction status. This report makes the missing step visible instead of implying it happened.">i</span></th><td>not applied</td></tr>
 <tr><th scope="row"><span class="summary-label-text">FLAIR alignment</span><span class="summary-help" tabindex="0" role="img" aria-label="How FLAIR was brought onto the baseline T1c grid." data-tooltip="How FLAIR was brought onto the baseline T1c grid.">i</span></th><td>header-affine resampling to baseline T1c grid</td></tr>
-<tr><th scope="row"><span class="summary-label-text">Registration QC</span><span class="summary-help" tabindex="0" role="img" aria-label="Visual QC artifact for checking whether T1c and FLAIR anatomy line up after preprocessing." data-tooltip="Visual QC artifact for checking whether T1c and FLAIR anatomy line up after preprocessing.">i</span></th><td>T1c/FLAIR checkerboard plus mask overlays; source FLAIR matched T1c before preprocessing: None</td></tr>
+<tr><th scope="row"><span class="summary-label-text">Registration QC</span><span class="summary-help" tabindex="0" role="img" aria-label="Visual QC artifact for checking whether T1c and FLAIR anatomy line up after preprocessing." data-tooltip="Visual QC artifact for checking whether T1c and FLAIR anatomy line up after preprocessing.">i</span></th><td>T1c/FLAIR checkerboard plus mask overlays. Source FLAIR matched T1c geometry before preprocessing: Not recorded.</td></tr>
 <tr><th scope="row"><span class="summary-label-text">Viewer slices</span><span class="summary-help" tabindex="0" role="img" aria-label="Number of axial slices rendered into the preprocessing viewer." data-tooltip="Number of axial slices rendered into the preprocessing viewer.">i</span></th><td>63</td></tr></table>
   <p class="quality-flags ok">No automatic preprocessing QC flags.</p>
 </section>
@@ -154,6 +165,7 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 </section>
 <section aria-labelledby="preprocess-slice-heading">
   <h2 id="preprocess-slice-heading">Axial Preprocessing Viewer</h2>
+  <p class="section-intro"><strong>T1c/FLAIR checkerboard:</strong> alternating image tiles should preserve continuous anatomy across their edges; visible jumps suggest misalignment.</p>
   <div class="slice-browser">
     <div class="slice-controls">
       <label for="slice-slider">Slice <output id="slice-label">z=128: midline</output></label>
@@ -187,9 +199,9 @@ figcaption { margin-bottom: 8px; font-weight: 600; }
 
 
 <figure>
-  <figcaption>T1c/FLAIR checkerboard</figcaption>
+  <figcaption>T1c/FLAIR alignment checkerboard</figcaption>
   <div class="image-stack">
-    <img src="preprocess_z128_checkerboard.png" alt="T1c/FLAIR checkerboard slice" data-image-channel="checkerboard">
+    <img src="preprocess_z128_checkerboard.png" alt="T1c/FLAIR alignment checkerboard slice" data-image-channel="checkerboard">
     <img src="preprocess_z128_brain.png" alt="Brain mask overlay" class="overlay" data-image-channel="brain" data-overlay="brain">
     <img src="preprocess_z128_tumor.png" alt="Baseline tumor overlay" class="overlay" data-image-channel="tumor" data-overlay="tumor">
   </div>

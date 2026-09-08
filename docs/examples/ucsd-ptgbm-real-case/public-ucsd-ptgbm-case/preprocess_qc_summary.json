@@ -20,7 +20,7 @@
     "visual_registration_qc": "T1c/FLAIR checkerboard plus mask overlays"
   },
   "quality_flags": [],
-  "research_only": "Research use only. This output is a recurrence-risk heatmap in baseline space and is not a clinical dose recommendation.",
+  "research_only": "Research use only. This report checks preprocessing outputs and is not a clinical-use output.",
   "selected_slices": [
     {
       "index": 128,

@@ -1,4 +1,4 @@
-# UCSD-PTGBM Real-Data QC Example
+# Real UCSD-PTGBM Pipeline Output
 
 This directory contains a static, public-data example generated from the UCSD-PTGBM collection on The Cancer Imaging Archive. The report uses a neutral case ID, `public-ucsd-ptgbm-case`, so the committed HTML does not expose the source case identifier.
 

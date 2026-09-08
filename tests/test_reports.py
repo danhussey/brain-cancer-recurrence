@@ -15,6 +15,7 @@ from glioma_recurrence.constants import (
 )
 from glioma_recurrence.geometry import Volume
 from glioma_recurrence.reports import (
+    PREPROCESS_RESEARCH_ONLY_DISCLAIMER,
     select_preprocess_slices,
     select_representative_slices,
     select_viewer_slices,
@@ -60,9 +61,10 @@ def test_case_qc_report_writes_interactive_overlay_assets_and_summary(tmp_path: 
 
     assert "Overlay Controls" in report
     assert "Timepoint Context" in report
-    assert "Post-operative, pre-radiotherapy T1c and FLAIR" in report
+    assert report.index("Timepoint Context") < report.index("Case Summary")
+    assert "Post-operative, pre-radiotherapy T1c, FLAIR, and tumor mask" in report
     assert "prediction-time inputs" in report
-    assert "Later follow-up reviewed label mapped back to baseline space" in report
+    assert "Reviewed recurrence on follow-up MRI" in report
     assert "training and evaluation only" in report
     assert "Overlay Key" in report
     assert "Overlay color key" in report
@@ -80,11 +82,11 @@ def test_case_qc_report_writes_interactive_overlay_assets_and_summary(tmp_path: 
     assert "Useful for marginal or distant recurrence review." in report
     assert "Mean risk in recurrence" in report
     assert "Mean risk outside recurrence" in report
-    assert "Top 1% risk overlap" in report
-    assert "Top 5% risk overlap" in report
-    assert "16 recurrence voxels in 16 high-risk voxels; coverage 100.00%; Dice 1.000" in report
-    assert "T1c baseline post-op / pre-radiotherapy with overlays" in report
-    assert "FLAIR baseline post-op / pre-radiotherapy with overlays" in report
+    assert "Highest-risk 1% of brain voxels" in report
+    assert "Highest-risk 5% of brain voxels" in report
+    assert "Captured 100.00% of recurrence (16 voxels); Dice 1.000" in report
+    assert "Baseline T1c" in report
+    assert "Baseline FLAIR" in report
     assert RESEARCH_ONLY_DISCLAIMER in report
     assert summary["patient_id"] == "CASE001"
     assert summary["recurrence_mask_present"] is True
@@ -157,6 +159,9 @@ def test_preprocess_qc_report_writes_brain_mask_checkerboard_and_summary(tmp_pat
     assert "Preprocessing QC" in report
     assert "Axial Preprocessing Viewer" in report
     assert "T1c/FLAIR checkerboard" in report
+    assert "alternating image tiles should preserve continuous anatomy" in report
+    assert PREPROCESS_RESEARCH_ONLY_DISCLAIMER in report
+    assert RESEARCH_ONLY_DISCLAIMER not in report
     assert 'data-opacity-control="brain"' in report
     assert 'value="4" data-initial-slice="4" data-slice-slider' in report
     assert "dedicated skull stripping not yet applied" in report
