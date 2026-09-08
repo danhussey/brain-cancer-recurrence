@@ -16,6 +16,7 @@ from .constants import (
     BASELINE_TUMOR_MASK,
     BRAIN_MASK,
     CASE_QC_SUMMARY_JSON,
+    PREPROCESS_QC_SUMMARY_JSON,
     RECURRENCE_RISK,
     case_dir,
 )
@@ -26,7 +27,7 @@ from .models import ModelError, TumorDistanceBandModel, VoxelLogisticMRIModel, l
 from .nifti import read_volume, write_volume
 from .observability import add_observability_args, build_observer
 from .preprocess import brain_mask_from_modalities, resample_flair_and_tumor_to_t1c, robust_normalize_mri
-from .reports import write_case_qc_report
+from .reports import write_case_qc_report, write_preprocess_qc_report
 from .schema import PatientRecord, filter_records, read_manifest
 
 
@@ -168,6 +169,21 @@ def cmd_preprocess(args: argparse.Namespace) -> int:
             write_volume(tumor_on_t1c, output_dir / BASELINE_TUMOR_MASK, dtype=np.uint8)
             write_volume(Volume(brain_mask, t1c.affine), output_dir / BRAIN_MASK, dtype=np.uint8)
             case = load_case(output_dir)
+            preprocess_qc_path = write_preprocess_qc_report(
+                case,
+                output_dir=output_dir,
+                source_t1c=t1c,
+                source_flair=flair,
+                source_baseline_tumor=baseline_tumor,
+            )
+            observe_qc_artifacts(
+                args,
+                preprocess_qc_path,
+                record.patient_id,
+                report_kind="preprocess_qc_report",
+                summary_kind="preprocess_qc_summary",
+                summary_name=PREPROCESS_QC_SUMMARY_JSON,
+            )
             qc_path = write_case_qc_report(case, output_dir=output_dir)
             observe_qc_artifacts(args, qc_path, record.patient_id)
             args.observer.event(
@@ -349,11 +365,19 @@ def cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
-def observe_qc_artifacts(args: argparse.Namespace, qc_path: Path, patient_id: str) -> None:
-    args.observer.artifact(qc_path, kind="qc_report", patient_id=patient_id)
-    summary_path = qc_path.parent / CASE_QC_SUMMARY_JSON
+def observe_qc_artifacts(
+    args: argparse.Namespace,
+    qc_path: Path,
+    patient_id: str,
+    *,
+    report_kind: str = "qc_report",
+    summary_kind: str = "qc_summary",
+    summary_name: str = CASE_QC_SUMMARY_JSON,
+) -> None:
+    args.observer.artifact(qc_path, kind=report_kind, patient_id=patient_id)
+    summary_path = qc_path.parent / summary_name
     if summary_path.exists():
-        args.observer.artifact(summary_path, kind="qc_summary", patient_id=patient_id)
+        args.observer.artifact(summary_path, kind=summary_kind, patient_id=patient_id)
 
 
 def _load_training_case(record: PatientRecord, derived_root: str | Path):

@@ -1,0 +1,23 @@
+{
+  "case_id": "public-ucsd-ptgbm-case",
+  "excluded_artifacts": [
+    "NIfTI images and masks",
+    "model files",
+    "clinical tables",
+    "observability logs",
+    "local source paths"
+  ],
+  "generated_artifacts": [
+    "preprocess_qc.html",
+    "preprocess_qc_summary.json",
+    "qc_overlay.html",
+    "qc_summary.json",
+    "per-slice PNG assets referenced by the HTML reports"
+  ],
+  "model": "voxel-logistic-mri",
+  "research_only": "Public-data documentation example only; not for clinical use or treatment planning.",
+  "source_case_identifier": "omitted from committed example; report uses a neutral public-demo case ID",
+  "source_collection": "The Cancer Imaging Archive UCSD-PTGBM public dataset",
+  "source_dataset": "UCSD-PTGBM",
+  "split": "validation in the local prepared UCSD-PTGBM workspace used for generation"
+}

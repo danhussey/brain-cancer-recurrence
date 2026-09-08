@@ -6,79 +6,73 @@
 [![Status: research prototype](https://img.shields.io/badge/status-research%20prototype-orange)](#research-use)
 [![Data: UCSD-PTGBM](https://img.shields.io/badge/data-UCSD--PTGBM-lightgrey)](https://www.cancerimagingarchive.net/collection/ucsd-ptgbm/)
 
-This repository builds a retrospective research pipeline for predicting where glioma may recur after surgery. It uses post-operative, pre-radiotherapy MRI as the baseline, maps later reviewed recurrence labels back into that baseline space, and produces a voxelwise `recurrence_risk.nii.gz` heatmap plus a human-readable QC report.
+This retrospective research pipeline uses post-operative, pre-radiotherapy MRI to predict where glioma may later recur. It produces a baseline-space voxelwise risk heatmap, maps reviewed follow-up recurrence labels back to the same space, and writes human-readable QC reports.
+
+## See a real pipeline output
+
+**[Open the real UCSD-PTGBM case](https://danhussey.github.io/brain-cancer-recurrence/examples/ucsd-ptgbm-real-case/)** to inspect preprocessing, the model output, and its overlap with a later reviewed recurrence label. [Jump straight to prediction and label QC](https://danhussey.github.io/brain-cancer-recurrence/examples/ucsd-ptgbm-real-case/public-ucsd-ptgbm-case/qc_overlay.html).
+
+![Real UCSD-PTGBM QC preview](docs/examples/ucsd-ptgbm-real-case/real-qc-preview.png)
+
+The preview pairs baseline post-operative, pre-radiotherapy T1c with the model risk map and later recurrence label. Cyan marks baseline tumor, magenta marks later recurrence, and blue-to-orange shows model risk. It demonstrates the pipeline output and QC experience; it is not evidence of model performance by itself.
+
+This public example uses a neutral case ID and contains static report assets only. It is research documentation, not a clinical-use output.
+
+## The Experiment
+
+**Question:** Can learned MRI models, from voxelwise logistic regression through an experimental 3D U-Net, localize later recurrence better than a simple distance-from-baseline-tumor model?
+
+**Current answer:** Not yet. On the provisional patient-level UCSD split (37 subjects; 12 held out), the tumor-distance baseline beat the voxel-logistic MRI model on both mean AUPRC and Brier score.
+
+| Held-out mean | Tumor distance | Voxel-logistic MRI |
+| --- | ---: | ---: |
+| AUPRC (higher is better) | **0.264** | 0.203 |
+| Brier score (lower is better) | **0.024** | 0.079 |
+
+The 3D U-Net path is implemented, but it does not yet have a credible held-out result. These numbers are a checkpoint, not a claim of generalization; the next useful result is a leakage-safe comparison across simple and deep models on a larger reviewed cohort. See the [cohort and result note](docs/research-log/2026-05-11-ucsd-cohort-and-labels.md#model-result).
+
+```mermaid
+flowchart TB
+  baseline["Prediction-time data<br/>Post-op, pre-RT T1c + FLAIR + baseline tumor mask"]
+  prep["Register, normalize, and QC"]
+  models["Competing models<br/>Tumor distance | Voxel-logistic MRI | 3D U-Net"]
+  followup["Outcome data: labels only<br/>Later MRI + reviewed recurrence mask"]
+  mapped["Map recurrence to baseline space"]
+  compare["Patient-level held-out comparison"]
+  compare --> outputs["AUPRC, Brier, coverage, Dice, and QC"]
+
+  baseline --> prep --> models --> compare
+  followup --> mapped --> compare
+
+  classDef input fill:#e8f4f1,stroke:#0f766e,color:#17202a
+  classDef model fill:#eef2ff,stroke:#4f46e5,color:#17202a
+  classDef label fill:#fce7f3,stroke:#be185d,color:#17202a
+  classDef result fill:#fff7df,stroke:#9a6700,color:#17202a
+  class baseline,prep input
+  class models model
+  class followup,mapped label
+  class compare,outputs result
+```
+
+Follow-up scans and recurrence masks define evaluation labels; they are never prediction-time model inputs.
 
 ## Portfolio Note
 
-I include this project as high-stakes evaluation engineering: patient-level
-splits, leakage control, label provenance, calibration, human-readable QC
-artifacts, and conservative baseline comparison.
+I include this project as high-stakes evaluation engineering: patient-level splits, leakage control, label provenance, calibration, human-readable QC artifacts, and conservative baseline comparison.
 
-The public-data path is MRI-only and uses longitudinal NIfTI images and tumor segmentations. The intended institutional path starts from clinical DICOM, converts to NIfTI for research processing, and later exports stable research outputs back to DICOM.
+## QC Reports
 
-| Question | V1 answer |
-| --- | --- |
-| Baseline input | Post-op/pre-RT T1c + FLAIR MRI, plus baseline tumor mask |
-| Training label | Later clinician-reviewed recurrence mask mapped to baseline space |
-| Output | Baseline-space voxelwise recurrence-risk heatmap |
-| Current datasets | UCSD-PTGBM for public engineering; institutional DICOM cohort planned |
-| Status | Research prototype |
+The reports are static HTML files written beside each case.
 
-## Project Shape
+`preprocess_qc.html` checks the baseline preparation step: geometry, intensity normalization, heuristic brain mask, baseline tumor-mask placement, and a T1c/FLAIR checkerboard for visual registration QC. It also states current limitations such as proxy skull stripping and no N4 bias correction.
 
-```mermaid
-flowchart LR
-  source["Clinical DICOM or UCSD NIfTI"] --> manifest["patients.csv"]
-  manifest --> derived["Derived NIfTI workspace"]
-  derived --> preprocess["preprocess: normalize and mask"]
-  preprocess --> labels["make-labels: map recurrence to baseline"]
-  labels --> train["train / evaluate"]
-  train --> outputs["recurrence_risk.nii.gz, QC report, metrics JSON"]
-```
+`qc_overlay.html` checks labels and predictions: case summary, tooltip explanations, opacity controls, an axial slice browser, and overlays for baseline tumor, recurrence label, and model risk.
 
-The key safety rule is simple: follow-up scans help define labels, but they are never prediction-time model inputs.
-
-```mermaid
-flowchart LR
-  baseline["Baseline post-op / pre-RT MRI"] --> model["Prediction model"]
-  model --> risk["Risk heatmap in baseline space"]
-  followup["Later follow-up MRI"] --> label["Reviewed recurrence label"]
-  label --> eval["Training / evaluation only"]
-  followup -. not used at prediction time .-> model
-```
-
-## Try It Without Medical Data
-
-This smoke test creates a tiny fake dataset, runs the full MRI-only path, writes metrics, and exercises the same QC report code used for real cases. The fake images are only for checking that the software works.
-
-```sh
-git clone https://github.com/danhussey/brain-cancer-recurrence.git
-cd brain-cancer-recurrence
-uv sync --extra dev
-
-uv run python scripts/generate_synthetic_dataset.py --output-root /tmp/glioma-smoke --n-patients 3 --shape 16,16,16
-uv run glioma-risk preprocess --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived
-uv run glioma-risk make-labels --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived --assume-baseline-space
-uv run glioma-risk train --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived --model tumor-distance --output /tmp/glioma-smoke/models/tumor-distance.json
-uv run glioma-risk evaluate --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived --model-path /tmp/glioma-smoke/models/tumor-distance.json --output /tmp/glioma-smoke/reports/eval.json --splits validation,test --write-predictions
-uv run glioma-risk predict --case-dir /tmp/glioma-smoke/derived/SYN002 --model-path /tmp/glioma-smoke/models/tumor-distance.json --output-dir /tmp/glioma-smoke/derived/SYN002
-```
-
-Open `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` after the run.
-
-## QC Report
-
-The QC report is a static HTML file written beside each case. It includes a case summary, tooltip explanations, opacity controls, an axial slice browser, and overlays for the artifacts available at that stage: baseline tumor, recurrence label, and/or model risk.
-
-![Synthetic QC report preview](docs/assets/qc-report-preview.png)
-
-The slice browser is deliberately simple: it is filesystem-friendly, works without a server, and lets reviewers move through the volume quickly.
-
-![Synthetic axial slice browser animation](docs/assets/qc-slice-browser.gif)
+Both slice browsers start at the midline, include jumps to relevant slices, and work directly from the filesystem without a server. The preprocessing checkerboard alternates T1c and FLAIR tiles so discontinuities at tile edges expose possible misalignment.
 
 Reports also write `qc_summary.json`, including recurrence voxels inside and outside the baseline tumor mask when a recurrence label is present. That distinction matters because residual tumor is expected to be high risk; the harder scientific question is whether a model can predict marginal or distant recurrence outside the obvious baseline tumor footprint.
 
-## Running The Pipeline
+## Run the Experiment
 
 The core install includes the MRI pipeline, NIfTI IO, SimpleITK registration, QC reports, and baseline models. The dev extra installs the test runner.
 
@@ -112,7 +106,9 @@ uv run glioma-risk predict --case-dir derived/P001 --model-path models/voxel-log
 
 The default `make-labels` path uses SimpleITK MRI-to-MRI registration. Use `--registration-mode affine` or `--assume-baseline-space` only when the geometry fallback has been checked.
 
-## Data Workflows
+## Medical Data Workflows
+
+The public-data path is MRI-only and uses longitudinal NIfTI images and tumor segmentations. The institutional path starts from clinical DICOM and converts to NIfTI for research processing.
 
 For institutional data, start with a read-only DICOM inventory before conversion:
 
@@ -137,6 +133,25 @@ uv run python scripts/prepare_ucsd_ptgbm_dataset.py \
 ```
 
 The adapter selects subjects with at least two complete MRI+mask timepoints, uses the earliest eligible complete timepoint as baseline, and uses the earliest later residual/recurrent tumor timepoint as the recurrence label. Negative-case tables can keep pseudoprogression, radiation-necrosis, and non-specific later timepoints as controls with empty recurrence labels.
+
+## Development Smoke Test
+
+This synthetic workflow is only for checking installation, command wiring, and report generation. Use reviewed medical data for scientific results.
+
+```sh
+git clone https://github.com/danhussey/brain-cancer-recurrence.git
+cd brain-cancer-recurrence
+uv sync --extra dev
+
+uv run python scripts/generate_synthetic_dataset.py --output-root /tmp/glioma-smoke --n-patients 3 --shape 16,16,16
+uv run glioma-risk preprocess --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived
+uv run glioma-risk make-labels --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived --assume-baseline-space
+uv run glioma-risk train --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived --model tumor-distance --output /tmp/glioma-smoke/models/tumor-distance.json
+uv run glioma-risk evaluate --manifest /tmp/glioma-smoke/patients.csv --derived-root /tmp/glioma-smoke/derived --model-path /tmp/glioma-smoke/models/tumor-distance.json --output /tmp/glioma-smoke/reports/eval.json --splits validation,test --write-predictions
+uv run glioma-risk predict --case-dir /tmp/glioma-smoke/derived/SYN002 --model-path /tmp/glioma-smoke/models/tumor-distance.json --output-dir /tmp/glioma-smoke/derived/SYN002
+```
+
+Open `/tmp/glioma-smoke/derived/SYN002/preprocess_qc.html` to check preprocessing and `/tmp/glioma-smoke/derived/SYN002/qc_overlay.html` to check labels and predictions.
 
 ## Research Use
 
@@ -176,6 +191,8 @@ brain_mask.nii.gz
 recurrence_risk.nii.gz
 qc_overlay.html
 qc_summary.json
+preprocess_qc.html
+preprocess_qc_summary.json
 ```
 
 ### Observability Artifacts

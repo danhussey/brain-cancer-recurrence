@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real UCSD-PTGBM Pipeline Output</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #17202a;
+    --muted: #5d6978;
+    --line: #d8dee8;
+    --accent: #0f766e;
+    --bg: #f7f8fb;
+    --panel: #ffffff;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 20px 56px;
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 1.05;
+  }
+  p {
+    max-width: 760px;
+  }
+  .preview {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--panel);
+  }
+  figure {
+    margin: 24px 0;
+  }
+  figcaption {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+  .links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 24px 0;
+  }
+  a.card {
+    display: block;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 16px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  a.card strong {
+    display: block;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  a.card.primary {
+    border-color: var(--accent);
+    border-width: 2px;
+  }
+  .artifacts {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+  .artifacts a { color: var(--accent); }
+  .note {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Real UCSD-PTGBM pipeline output</h1>
+  <p>
+    This public case shows what the research pipeline produces from post-operative,
+    pre-radiotherapy MRI: preprocessing QC, a voxelwise recurrence-risk heatmap,
+    and comparison with a later reviewed recurrence label.
+  </p>
+  <figure>
+    <img class="preview" src="real-qc-preview.png" alt="Baseline MRI beside a recurrence-risk map and later recurrence label from the real public-data example">
+    <figcaption>Baseline T1c at left; model risk and later recurrence at right. The overlay key and overlap result are included in the image.</figcaption>
+  </figure>
+  <div class="links">
+    <a class="card primary" href="public-ucsd-ptgbm-case/qc_overlay.html">
+      <strong>Prediction and label QC</strong>
+      Baseline anatomy, recurrence label, tumor mask, and recurrence-risk heatmap.
+    </a>
+    <a class="card" href="public-ucsd-ptgbm-case/preprocess_qc.html">
+      <strong>Preprocessing QC</strong>
+      T1c/FLAIR alignment, brain mask, baseline tumor mask, and quality flags.
+    </a>
+  </div>
+  <p class="artifacts">Machine-readable summaries: <a href="public-ucsd-ptgbm-case/qc_summary.json">prediction and label JSON</a> and <a href="public-ucsd-ptgbm-case/preprocess_qc_summary.json">preprocessing JSON</a>.</p>
+  <p class="note">
+    Public data, neutral case ID, and static report assets only. Research documentation;
+    not for clinical use or patient management.
+  </p>
+</main>
+</body>
+</html>
